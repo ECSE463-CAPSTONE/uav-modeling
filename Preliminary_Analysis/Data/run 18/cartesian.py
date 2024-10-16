@@ -1,9 +1,20 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+
 import pandas as pd
 
 def central_difference_derivative(csv_file,additional_column,column_name):
+    """
+    Read a CSV file, apply central difference to differentiate a specified column,
+    and return a DataFrame named 'acceleration' with the original column and its derivative.
 
+    Parameters:
+    csv_file (str): Path to the CSV file.
+    column_name (str): Name of the column to differentiate.
+
+    Returns:
+    pd.DataFrame: DataFrame named 'acceleration' with the original column and its derivative.
+    """
     # Load the CSV file into a DataFrame
     try:
         df = pd.read_csv(csv_file)
@@ -42,10 +53,10 @@ def central_difference_derivative(csv_file,additional_column,column_name):
 # print(acceleration)
 
 
-#acc=central_difference_derivative("","TimeMs","H.Speed")
-#print(acc)
-#plt.figure(figsize=(10, 6))
-#plt.plot(acc["TimeMs"],acc["hSpeed_derivative"])
-#plt.show()
-df = pd.read_csv(r"Data/Run18/combined_file.csv")
+acc=central_difference_derivative("combined_file.csv","TimeMs","H.Speed")
+print(acc)
+plt.figure(figsize=(10, 6))
+plt.plot(acc["longitudeDeg"],acc["latitudeDeg"])
+plt.show()
+   
 
