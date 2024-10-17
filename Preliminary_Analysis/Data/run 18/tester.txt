@@ -1,0 +1,6 @@
+import pandas as pd
+import numpy as np
+df = pd.read_csv("combined_file.csv")
+x=20/df["hSpeed"]
+print(x)
+normalized=np.divide(float(slope),float(df["hSpeed"][i]))

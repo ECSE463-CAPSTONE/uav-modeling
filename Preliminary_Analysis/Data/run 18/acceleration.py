@@ -1,9 +1,17 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import pandas as pd
+def central_difference_derivative(csv_file, column_name):
+    """
+    Read a CSV file, apply central difference to differentiate a specified column,
+    and return a DataFrame named 'acceleration' containing only the derivative of the specified column.
 
-def central_difference_derivative(csv_file,additional_column,column_name):
+    Parameters:
+    csv_file (str): Path to the CSV file.
+    column_name (str): Name of the column to differentiate.
 
+    Returns:
+    pd.DataFrame: DataFrame named 'acceleration' with the derivative of the specified column.
+    """
     # Load the CSV file into a DataFrame
     try:
         df = pd.read_csv(csv_file)
@@ -30,20 +38,16 @@ def central_difference_derivative(csv_file,additional_column,column_name):
     # Apply central difference method
     derivative[1:-1] = (values[2:] - values[:-2]) / (2 * h)
 
-    # Create a new DataFrame called 'acceleration' with only the original column and its derivative
-    acceleration = pd.DataFrame({additional_column: df[additional_column],
+    # Create a new DataFrame called 'acceleration' containing only the derivative
+    acceleration = pd.DataFrame({"Time":df["TimeMs"],
         f'{column_name}_derivative': derivative
-        
     })
- 
 
+    return acceleration
 
-
-
-acc=central_difference_derivative("combined_file.csv","longitudeDeg","latitudeDeg")
-print(acc)
+# Example usage:
+acceleration = central_difference_derivative("combined_file.csv", 'hSpeed')
+print(acceleration)
 plt.figure(figsize=(10, 6))
-plt.plot(acc["longitudeDeg"],acc["latitudeDeg"])
+plt.plot(acceleration["Time"],acceleration["hSpeed_derivative"])
 plt.show()
-
-
