@@ -79,13 +79,15 @@ class RigidBody:
                                                        np.cos(self.tow_force.delta_t - theta) * self.tow_force.location[1])
 
         #Control Force Moment
-        control_force_moment = np.sum([(f.location[1] * (-f.magnitude[0] * np.cos(f.alpha_i) + f.magnitude[1] * np.sin(f.alpha_i)) \
-                                       + f.location[0] * (f.magnitude[0] * np.sin(f.alpha_i) + f.magnitude[1] * np.cos(f.alpha_i)))
-                                       for f in self.control_forces])
+        control_force_moment = np.sum([(f.location[0] * (f.magnitude[0] * np.sin(f.alpha_i) + f.magnitude[1] * np.cos(f.alpha_i)) \
+                                        +f.location[1] * (-f.magnitude[0] * np.cos(f.alpha_i) + f.magnitude[1] * np.sin(f.alpha_i))) \
+                                        for f in self.control_forces])
 
         #Hull Force Moment
         hull_force_moment = self.hull_force.magnitude[0] *(self.hull_force.location[0] * np.sin(theta) \
-                                                           -self.hull_force.location[1] * np.cos(theta))
+                                                           -self.hull_force.location[1] * np.cos(theta)) \
+                            +self.hull_force.magnitude[1] *(self.hull_force.location[0] * np.cos(theta) \
+                                                           -self.hull_force.location[1] * np.sin(theta))
         
         #Sum
         total_moment_y = buoyancy_moment + tow_force_moment + control_force_moment + hull_force_moment
