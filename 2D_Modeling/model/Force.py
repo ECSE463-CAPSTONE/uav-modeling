@@ -34,12 +34,12 @@ class ControlForce():
 
    
     # CALCULATES WITH RESPECT TO V NOT IN BODY FRAME
-    def calculate_force(self, velocity_states, rel_position):
+    def calculate_force(self, velocity_states):
         """Calculate the actual force vector from lift and drag"""
-        r_x, r_z = rel_position 
+        r_x, r_z = self.location 
         u, w, q = velocity_states
 
-        self.calculate_alpha_i(velocity_states, rel_position)
+        self.calculate_alpha_i(velocity_states)
         Cl, Cd = self.calculate_cl_cd(velocity_states)
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
@@ -47,6 +47,8 @@ class ControlForce():
         drag = 0.5 * rho * Cd * self.A * V ** 2
 
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
+
+        return Cl, Cd, V, lift, drag
 
 
 class HullForce():
