@@ -14,14 +14,14 @@ class Simulation_Result():
         self.inertial_velocity = np.zeros((N, 2))    # 2D array for [x_dot, z_dot]
         self.pitch_rate = np.zeros(N)                # 1D array for pitch rate values
         self.inertial_acceleration = np.zeros((N, 2))# 2D array for acceleration in [x_dot, z_dot]
+        self.angular_acceleration = np.zeros(N)      # 1D array for angular acceleration values
 
-        self.bf_position = np.zeros((N, 2))          # 2D array for body-frame position
+       
         self.bf_velocity = np.zeros((N, 2))          # 2D array for body-frame velocity
         self.bf_acceleration = np.zeros((N, 2))      # 2D array for body-frame acceleration
 
         self.control_force_C_D = np.zeros(N, nb_control_forces)         # 1D array for drag force values
         self.control_force_C_L = np.zeros(N, nb_control_forces)         # 1D array for lift force values
-
         self.control_flow_velocity = np.zeros((N, nb_control_forces, 2))# 2D array for control flow velocity
 
         # Assuming each element of control_force_magnitude is a list of lists [ [drag, lift] ]
@@ -61,14 +61,6 @@ class Simulation():
             controlForce.delta_i
         self.sim.pitch_angle[0]
 
-    
-    def initialize_system(self, initial_state): 
-        self.sim.inertial_position[0] = initial_state[:2]
-        # self.sim.pitch_angle[0] = initial_state[2]
-
-        self.sim.inertial_velocity[0] = initial_state[3:-1] # [[x_dot, z_dot]]
-        self.sim.pitch_rate[0] = initial_state[-1]
-        
     def transformation_matrix(self, pitch_angle):
         """Returns the transformation matrix T to convert body frame to inertial frame."""
         cos_theta = np.cos(pitch_angle)
@@ -80,7 +72,20 @@ class Simulation():
             [sin_theta, cos_theta]
         ])
         return T
+    
+    def initialize_system(self, initial_state): 
+        self.sim.inertial_position[0] = initial_state[:2]
+        # self.sim.pitch_angle[0] = initial_state[2]
 
+        self.sim.inertial_velocity[0] = initial_state[3:-1] # [[x_dot, z_dot]]
+        self.sim.pitch_rate[0] = initial_state[-1]
+
+        T = self.transformation_matrix(self.sim.pitch_angle)
+        
+        self.bf_velocity[0,:] = T.T @ initial_state[:2]
+        self.bf_acceleration[0,:] = T.T @ initial_state[3:-1]
+        
+    
     def solve_forces(self, i):
         ## Find control forces
         for f_i, force in enumerate(self.control_forces):
@@ -108,15 +113,16 @@ class Simulation():
             theta = self.sim.pitch_angle[ i - 1]
             # 1. Calculate forces and moments in the body frame
             self.solve_forces(i - 1, theta)
-            total_force = self.sum_forces(i - 1, theta)  # F_body = [Fx, Fz] in body frame
-            total_moment = self.sum_moments(i - 1, theta)  # M_body = My
+            total_force = self.rigidbody.sum_forces(i - 1, theta)  # F_body = [Fx, Fz] in body frame
+            total_moment = self.rigidbody.sum_moments(i - 1, theta)  # M_body = My
 
             # 2. Calculate body frame accelerations (q_dot_dot)
-            ax_body = total_force[0] / self.mass  
-            az_body = total_force[1] / self.mass  
+            ax_body = total_force[0] / self.rigidbody.mass  
+            az_body = total_force[1] / self.rigidbody.mass  
             self.sim.bf_acceleration[i] = np.array([ax_body, az_body])
 
-            alpha_body = total_moment / self.Iyy  # pitch angular acceleration
+            alpha_body = total_moment / self.rigidbody.Iyy  # pitch angular acceleration
+            self.sim.angular_acceleration[i] = alpha_body 
             
 
             # 3. Update body frame velocities (q_dot) using Euler integration
@@ -126,18 +132,15 @@ class Simulation():
 
             # 4. Transform q_dot (body velocities) to x_dot (inertial velocities)
             T = self.transformation_matrix(self.sim.pitch_angle[i-1])  # Get the transformation matrix based on pitch angle
-            x_dot_inertial = T @ self.velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
-
+            x_dot_inertial = T @ self.bf_velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
+            self.sim.inertial_velocity[i, :] = x_dot_inertial
+            
             # 5. Update inertial frame position using Euler integration
-            self.position[i, :] = self.position[i-1, :] + x_dot_inertial * dt
+            self.sim.inertial_position[i, :] = self.sim.inertial_position[i-1, :] + x_dot_inertial * dt
 
             # 6. Update pitch angle (integrate angular velocity)
-            self.pitch_angle[i] = self.pitch_angle[i-1] + self.pitch_rate[i] * dt
+            self.sim.pitch_angle[i] = self.sim.pitch_angle[i-1] + self.sim.pitch_rate[i] * dt
 
         return
 
 
-        # T = self.rigidbody.transformation_matrix(pitch_angle)
-        
-        # self.velocity[0,:] = T.T @ initial_inertial_velocity[:-1]
-        # self.pitch_rate[0] = initial_inertial_velocity[-1]
