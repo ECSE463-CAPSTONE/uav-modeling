@@ -41,9 +41,12 @@ class RigidBody:
         """Adds a moment about the y-axis"""
         self.moments.append(moment)
     
+
+    ## Fix according to write up:
     def sum_forces(self, i):
         """Sums up all forces acting on the body in x and z directions"""
         # print('Summing forces', self.tow_force.magnitude[i, 0] )
+        ## FIX THIS TO CHANGE CONTROL FORCES TO BODY FRAME
         total_force_x = (self.mass * 9.81 - self.buoyancy) * np.sin(self.pitch_angle[i]) + np.sum([f.magnitude[0] for f in self.control_forces]) + self.tow_force.magnitude[i, 0] 
         total_force_z = -(self.mass * 9.81 - self.buoyancy) * np.cos(self.pitch_angle[i]) + np.sum([f.magnitude[1] for f in self.control_forces]) + self.tow_force.magnitude[i, 1] 
         # print('Total force', total_force_x, total_force_z)

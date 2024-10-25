@@ -9,6 +9,9 @@ class Force:
         self.magnitude = np.zeros((N,2))  # Force magnitude as a vector
         self.current_magnitude = 0
         self.angle_of_attacks = []
+
+        ## ADD something to save CL and CD
+
 class ControlForce(Force):
     def __init__(self, location, N, A, C_L_alpha, C_D0, e = 0.85):
         super().__init__(location, N)
@@ -17,7 +20,8 @@ class ControlForce(Force):
         self.C_D0 = C_D0 #parasite drag coefficient
         self.e = e # Oswald efficiency factor
     
-    def calculate_alpha(self, velocity_states, relative_position):
+    
+    def calculate_alpha_i(self, velocity_states, relative_position):
         u, w, q = velocity_states
         r_x, r_z = self.location 
         # print(f'u,v,w : {u}, {w}, {q}')
@@ -27,6 +31,7 @@ class ControlForce(Force):
         if np.isnan(alpha):
             alpha = 0
 
+        
         # print(f'alpha {(alpha)}')
         self.angle_of_attacks.append(alpha)
         self.angle_of_attack = alpha
@@ -35,16 +40,20 @@ class ControlForce(Force):
     def calculate_cl_cd(self, velocity_states):
         """Calculate the lift and drag coefficients based on the angle of attack"""
         A = self.A
+
+        #ADD STALLL:  
         Cl = self.C_L_alpha * A / ( 2 * (A + 4) / (A + 2))  * self.angle_of_attack  # Lift coefficient, eq. 19
         Cd = self.C_D0 + Cl**2 / (np.pi * A * self.e)  # Drag coefficient, eq. 20
         return Cl, Cd
 
+   
+    # CALCULATES WITH RESPECT TO V NOT IN BODY FRAME
     def calculate_force(self, velocity_states, rel_position):
         """Calculate the actual force vector from lift and drag"""
         r_x, r_z = rel_position 
         u, w, q = velocity_states
 
-        self.calculate_alpha(velocity_states, rel_position)
+        self.calculate_alpha_i(velocity_states, rel_position)
         Cl, Cd = self.calculate_cl_cd(velocity_states)
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
@@ -59,6 +68,9 @@ class TowingForce(Force):
         self.tow_length = tow_length
         self.scalar_magnitude = initial_magntidude
         self.D = D
+
+
+    ## Fix the direction intead      
 
     def calculate_direction(self, D, tow_depth, pitch_angle):
         # D is distance of drone form see, z is inertia position of uav
