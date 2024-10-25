@@ -48,6 +48,7 @@ class ControlForce():
 
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
 
+
 class HullForce():
     def __init__(self, area, location, Cd = 1.2, correction = 0.75):
         self.Cd = Cd * correction #Cylinder Cd Approximation
