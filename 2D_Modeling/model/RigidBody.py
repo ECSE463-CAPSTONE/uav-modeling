@@ -44,10 +44,10 @@ class RigidBody:
         self.hull_force = force
 
     ## Fix according to write up:
-    def sum_forces(self, i):
+    def sum_forces(self, theta):
         """Sums up all forces acting on the body in x and z directions"""
         #Extract pitch angle for current iteration
-        theta = self.pitch_angle[i]
+        # theta = self.pitch_angle[i]
 
         total_force_x = -(self.mass * 9.81 - self.buoyancy) *  np.sin(theta) \
                             + self.tow_force.magnitude * np.cos(self.tow_force.delta_t - theta) \
@@ -65,10 +65,10 @@ class RigidBody:
         
         return np.array([total_force_x, total_force_z])
     
-    def sum_moments(self, i):
+    def sum_moments(self, theta):
         """Sums up all moments acting on the body about the y-axis (pitch)"""
         #Extract pitch angle for current iteration
-        theta = self.pitch_angle[i]
+        # theta = self.pitch_angle[i]
 
         #Buoyancy moment
         buoyancy_moment = self.buoyancy * (self.center_of_buoyancy[0] * np.cos(theta) + \
@@ -94,14 +94,4 @@ class RigidBody:
 
         return total_moment_y
     
-    def transformation_matrix(self, pitch_angle):
-        """Returns the transformation matrix T to convert body frame to inertial frame."""
-        cos_theta = np.cos(pitch_angle)
-        sin_theta = np.sin(pitch_angle)
-
-        # Transformation matrix T
-        T = np.array([
-            [cos_theta, -sin_theta],
-            [sin_theta, cos_theta]
-        ])
-        return T
+    
