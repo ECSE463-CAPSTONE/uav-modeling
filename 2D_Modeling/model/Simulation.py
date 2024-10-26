@@ -5,7 +5,7 @@ from .RigidBody import RigidBody
 
 class Simulation_Result():
 
-    def init(self, dt, N, nb_control_forces):
+    def init(self, dt = 0.02, N = 10, nb_control_forces = 1):
         # Initialize NumPy arrays with shape (N, 2) for 2D vectors and (N,) for 1D arrays.
         # Replace `N` with the desired number of rows, depending on your data needs.
 
@@ -34,6 +34,7 @@ class Simulation_Result():
         self.hull_force_moment = np.zeros(N)             # 1D array for hull moment
 
         self.dt = dt
+        self.N = N
         
 
 class Simulation():
@@ -44,7 +45,7 @@ class Simulation():
         self.controlForces = controlForces
 
         self.initialize_rigid_body()
-        self.sim = sim
+        self.sim = Simulation_Result()
 
     
     def initialize_rigid_body(self):
@@ -105,9 +106,11 @@ class Simulation():
 
             
 
-    def simulate_forward_euler(self, initial_inertial_position, initial_inertial_velocity, dt):
+    def simulate_forward_euler(self, initial_state, dt, N):
+        #  Initialize the simulation
         dt = self.sim.dt
-        self.initialize_system(initial_inertial_position, initial_inertial_velocity)
+        self.sim = Simulation_Result(dt, N, len(self.control_forces))
+        self.initialize_system(initial_state)
         
         for i in range(1, self.N):
             theta = self.sim.pitch_angle[ i - 1]
@@ -141,6 +144,6 @@ class Simulation():
             # 6. Update pitch angle (integrate angular velocity)
             self.sim.pitch_angle[i] = self.sim.pitch_angle[i-1] + self.sim.pitch_rate[i] * dt
 
-        return
+        return self.sim
 
 
