@@ -40,7 +40,7 @@ class Simulation_Result():
         
 
 class Simulation():
-    def __init__(self, rigidbody : RigidBody, towingForce: TowingForce, hullForce: HullForce, controlForces : list[ControlForce], sim : Simulation_Result):
+    def __init__(self, rigidbody : RigidBody, towingForce: TowingForce, hullForce: HullForce, controlForces : list[ControlForce]):
         self.rigidbody = rigidbody
         self.towingForce = towingForce
         self.hullForce = hullForce

@@ -17,7 +17,7 @@ class RigidBody:
         self.buoyancy  = rho * g * self.volume
 
         # Store forces and moments
-        self.control_forces : list[ControlForce]  # List of forces acting on the body
+        self.control_forces = [] #: list[ControlForce]  # List of forces acting on the body
         self.tow_force : TowingForce
         self.moments = []  # List of moments about the y-axis (pitch)
         self.hull_force : HullForce

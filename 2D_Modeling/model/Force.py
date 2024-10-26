@@ -11,7 +11,7 @@ class ControlForce():
         self.e = e # Oswald efficiency factor
         self.location = location # [r_x, r_z] location relative to COM
         self.delta_i = delta_i #Fixed angle of attack of the control force
-        self.magnitude = np.zeros(1,2) # Array to save temporary values [drag, lift]
+        self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
 
     
     def calculate_alpha_i(self, velocity_states):
@@ -55,7 +55,7 @@ class HullForce():
     def __init__(self, area, location, Cd = 1.2, correction = 0.75):
         self.Cd = Cd * correction #Cylinder Cd Approximation
         self.area = area
-        self.magnitude = np.zeros(1,2) # Array to save temporary values [drag, lift]
+        self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
         self.location = location
 
     def calculate_force(self, velocity_states, rel_position):
@@ -73,7 +73,7 @@ class HullForce():
 
 
 class TowingForce():
-    def __init__(self, location, magnitude, delta_t, N):
+    def __init__(self, location, magnitude, delta_t):
         self.magnitude = magnitude
         self.delta_t = delta_t
         self.location = location
