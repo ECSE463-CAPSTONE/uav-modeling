@@ -1,8 +1,9 @@
 "Class used to save and run simulation"
 import numpy as np
-
+import scipy.optimize as opti
 from .Force import HullForce, ControlForce, TowingForce
 from .RigidBody import RigidBody
+
 
 class Simulation_Result():
 
@@ -55,13 +56,78 @@ class Simulation():
         for controlForce in self.controlForces:
             self.rigidbody.add_control_force(controlForce)
 
-    # Figure out root solver
-    def solve_equalibrium_state(self):
-        self.towingForce.magnitude 
-        self.towingForce.delta_t
-        for controlForce in self.controlForces:    
-            controlForce.delta_i
-        self.sim.pitch_angle[0]
+
+    def solve_equilibrium_state(self, initial_velocity):
+        #Solve for X-Dot = 0
+        
+        #Initialize system
+        initial_state = np.array([0, 0, 0, initial_velocity, 0, 0, 0, 0, 0])
+        self.initialize_system(initial_state)
+
+        #Define objective function
+        def objective_function_1(pitch_angle, delta_t, towing_force, delta_i):
+            
+            #Override variables being optimized
+            self.towingForce.delta_t = delta_t
+            self.towingForce.magnitude = towing_force
+            self.controlForces[0].delta_i = delta_i
+
+            #initialize system
+
+            #Solve forces
+            self.solve_forces(0)
+
+            #Calculate sum of forces/moments
+            total_force_x,total_force_z = self.rigidbody.sum_forces(pitch_angle) 
+            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
+
+            #Set objective
+            objective = towing_force
+            return objective
+
+        #Define objective function
+        def objective_function_2(pitch_angle, delta_t, towing_force, delta_i):
+            return towing_force
+        
+        #Set bounds
+        lb_tow_force, ub_tow_force = np.array([0, 2000])
+        lb_delta_t, ub_delta_t = np.rad2deg(np.array([0, 60]))
+        lb_delta_i, ub_delta_i = np.rad2deg(np.array([-20, 10]))
+        lb_pitch_angle, ub_pitch_angle = np.rad2deg(np.array([-5, 5]))
+        
+        bnds = ((lb_pitch_angle, ub_pitch_angle), (lb_delta_t, ub_delta_t), (lb_tow_force, ub_tow_force),(lb_delta_i, ub_delta_i))
+
+        #Set constraints
+        def constraint_function(pitch_angle, delta_t, towing_force, delta_i):
+            #Override variables being optimized
+            self.towingForce.delta_t = delta_t
+            self.towingForce.magnitude = towing_force
+            self.controlForces[0].delta_i = delta_i
+
+            #Solve forces
+            self.solve_forces(0)
+
+            #Calculate sum of forces/moments
+            total_force_x,total_force_z = self.rigidbody.sum_forces(pitch_angle) 
+            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
+
+            return total_force_x, total_force_z, total_moment_y
+
+        cons = ({'type': 'eq', 'fun': constraint_function[0]},
+                {'type': 'eq', 'fun': constraint_function[1]},
+                {'type': 'eq', 'fun': constraint_function[2]})
+
+        #Set initial guess
+        x0 = (np.mean([lb_pitch_angle, ub_pitch_angle]),  np.mean([lb_delta_t, ub_delta_t]), np.mean([lb_tow_force,ub_tow_force]), np.mean([lb_delta_i, ub_delta_i]))
+
+        results = opti.minimize(objective_function_2,x0,bounds=bnds,constraints=cons)
+
+        if not results.success:
+            print("failed to optimize for equilibrium")
+            print(results.message)
+
+        return results
+
 
     def transformation_matrix(self, pitch_angle):
         """Returns the transformation matrix T to convert body frame to inertial frame."""
@@ -121,8 +187,8 @@ class Simulation():
             total_moment = self.rigidbody.sum_moments(i - 1, theta)  # M_body = My
 
             # 2. Calculate body frame accelerations (q_dot_dot)
-            ax_body = total_force[0] / self.rigidbody.mass  - self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 1] 
-            az_body = total_force[1] / self.rigidbody.mass  + self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 0]
+            ax_body = total_force[0] / self.rigidbody.mass  
+            az_body = total_force[1] / self.rigidbody.mass  
             self.sim.bf_acceleration[i] = np.array([ax_body, az_body])
 
             alpha_body = total_moment / self.rigidbody.Iyy  # pitch angular acceleration
@@ -136,11 +202,11 @@ class Simulation():
 
             # 4. Transform q_dot (body velocities) to x_dot (inertial velocities)
             T = self.transformation_matrix(self.sim.pitch_angle[i-1])  # Get the transformation matrix based on pitch angle
-            inertial_velocities = T @ self.bf_velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
-            self.sim.inertial_velocity[i, :] = inertial_velocities
+            x_dot_inertial = T @ self.bf_velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
+            self.sim.inertial_velocity[i, :] = x_dot_inertial
             
             # 5. Update inertial frame position using Euler integration
-            self.sim.inertial_position[i, :] = self.sim.inertial_position[i-1, :] + inertial_velocities * dt
+            self.sim.inertial_position[i, :] = self.sim.inertial_position[i-1, :] + x_dot_inertial * dt
 
             # 6. Update pitch angle (integrate angular velocity)
             self.sim.pitch_angle[i] = self.sim.pitch_angle[i-1] + self.sim.pitch_rate[i] * dt

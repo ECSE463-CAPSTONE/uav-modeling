@@ -17,9 +17,10 @@ class RigidBody:
         self.buoyancy  = rho * g * self.volume
 
         # Store forces and moments
-        self.control_forces = []  # List of forces acting on the body
-        self.tow_force : Force
+        self.control_forces : list[ControlForce]  # List of forces acting on the body
+        self.tow_force : TowingForce
         self.moments = []  # List of moments about the y-axis (pitch)
+        self.hull_force : HullForce
 
         # Initial conditions for position, velocity, and pitch
         self.position = np.zeros((N, 2))  # 2D position [x, z]
