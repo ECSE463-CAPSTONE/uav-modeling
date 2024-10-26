@@ -77,15 +77,17 @@ class Simulation():
     
     def initialize_system(self, initial_state): 
         self.sim.inertial_position[0] = initial_state[:2]
-        # self.sim.pitch_angle[0] = initial_state[2]
+        self.sim.pitch_angle[0] = initial_state[2]
 
-        self.sim.inertial_velocity[0] = initial_state[3:-1] # [[x_dot, z_dot]]
-        self.sim.pitch_rate[0] = initial_state[-1]
+        self.sim.inertial_velocity[0] = initial_state[3:5] # [[x_dot, z_dot]]
+        self.sim.pitch_rate[0] = initial_state[6]
+        self.sim.inertial_acceleration[0] = initial_state[7:9]
+        self.sim.pitch_rate[0] = initial_state[9]
 
         T = self.transformation_matrix(self.sim.pitch_angle)
         
-        self.bf_velocity[0,:] = T.T @ initial_state[:2]
-        self.bf_acceleration[0,:] = T.T @ initial_state[3:-1]
+        self.bf_velocity[0,:] = T.T @ self.sim.inertial_velocity[0]
+        self.bf_acceleration[0,:] = T.T @ self.sim.inertial_acceleration[0]
         
     
     def solve_forces(self, i):
