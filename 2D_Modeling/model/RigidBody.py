@@ -8,11 +8,11 @@ g = 9.81
 rho = 1000
 
 class RigidBody:
-    def __init__(self, mass: float, volume: float, inertia: float, COM: np.array, center_of_buoyancy: np.array, N: int):
+    def __init__(self, mass: float, volume: float, inertia: float, center_of_buoyancy: np.array):
         self.mass = mass
         self.volume = volume
         self.Iyy = inertia
-        self.COM = COM  # Center of mass [x, z]
+        self.COM = np.zeros(2)  # Center of mass [x, z]
         self.center_of_buoyancy = center_of_buoyancy  # Center of buoyancy [x, z]
         self.buoyancy  = rho * g * self.volume
 
@@ -22,13 +22,12 @@ class RigidBody:
         self.moments = []  # List of moments about the y-axis (pitch)
         self.hull_force : HullForce
 
-        # Initial conditions for position, velocity, and pitch
-        self.position = np.zeros((N, 2))  # 2D position [x, z]
-        self.velocity = np.zeros((N, 2))  # 2D velocity [u, w]
-        self.pitch_angle = np.zeros(N)  # Pitch angle (about y-axis)
-        self.pitch_rate = np.zeros(N)  # Angular velocity (pitch rate)
+        # # Initial conditions for position, velocity, and pitch
+        # self.position = np.zeros((N, 2))  # 2D position [x, z]
+        # self.velocity = np.zeros((N, 2))  # 2D velocity [u, w]
+        # self.pitch_angle = np.zeros(N)  # Pitch angle (about y-axis)
+        # self.pitch_rate = np.zeros(N)  # Angular velocity (pitch rate)
 
-        self.N = N
     
     def add_tow_force(self, force):
         self.tow_force = force
