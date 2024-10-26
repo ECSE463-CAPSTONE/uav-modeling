@@ -135,11 +135,11 @@ class Simulation():
 
             # 4. Transform q_dot (body velocities) to x_dot (inertial velocities)
             T = self.transformation_matrix(self.sim.pitch_angle[i-1])  # Get the transformation matrix based on pitch angle
-            x_dot_inertial = T @ self.bf_velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
-            self.sim.inertial_velocity[i, :] = x_dot_inertial
+            inertial_velocities = T @ self.bf_velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
+            self.sim.inertial_velocity[i, :] = inertial_velocities
             
             # 5. Update inertial frame position using Euler integration
-            self.sim.inertial_position[i, :] = self.sim.inertial_position[i-1, :] + x_dot_inertial * dt
+            self.sim.inertial_position[i, :] = self.sim.inertial_position[i-1, :] + inertial_velocities * dt
 
             # 6. Update pitch angle (integrate angular velocity)
             self.sim.pitch_angle[i] = self.sim.pitch_angle[i-1] + self.sim.pitch_rate[i] * dt
