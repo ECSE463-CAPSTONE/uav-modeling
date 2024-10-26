@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from .Force import Force, ControlForce, TowingForce
+from .Force import HullForce, ControlForce, TowingForce
 
 #Global variables
 g = 9.81

@@ -1,5 +1,6 @@
 "Class used to save and run simulation"
 import numpy as np
+
 from .Force import HullForce, ControlForce, TowingForce
 from .RigidBody import RigidBody
 
@@ -120,8 +121,8 @@ class Simulation():
             total_moment = self.rigidbody.sum_moments(i - 1, theta)  # M_body = My
 
             # 2. Calculate body frame accelerations (q_dot_dot)
-            ax_body = total_force[0] / self.rigidbody.mass  
-            az_body = total_force[1] / self.rigidbody.mass  
+            ax_body = total_force[0] / self.rigidbody.mass  - self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 1] 
+            az_body = total_force[1] / self.rigidbody.mass  + self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 0]
             self.sim.bf_acceleration[i] = np.array([ax_body, az_body])
 
             alpha_body = total_moment / self.rigidbody.Iyy  # pitch angular acceleration
