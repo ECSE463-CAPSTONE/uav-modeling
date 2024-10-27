@@ -40,7 +40,7 @@ class ControlForce():
         u, w, q = velocity_states
 
         self.calculate_alpha_i(velocity_states)
-        Cl, Cd = self.calculate_cl_cd(velocity_states)
+        Cl, Cd = self.calculate_cl_cd()
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
         lift = 0.5 * rho * Cl * self.A * V ** 2
