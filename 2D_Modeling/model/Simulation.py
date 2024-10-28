@@ -327,13 +327,6 @@ class Simulation():
                 # Return the sum of squares of equations to minimize
                 return total_force_x**2 + total_force_z**2 + total_moment_y**2
 
-            # Set bounds for the parameters
-            # bounds = [
-            #     (np.deg2rad(-7), np.deg2rad(7)),     # pitch_angle
-            #     (np.deg2rad(25), np.deg2rad(60)),      # delta_t
-            #     (0, 1000),                             # towing_force
-            #     (np.deg2rad(-20), np.deg2rad(10))     # delta_i
-            # ]
 
             # Initial guess
             x0 = np.array([np.deg2rad(-5), np.deg2rad(40), 5, np.deg2rad(-5)])
