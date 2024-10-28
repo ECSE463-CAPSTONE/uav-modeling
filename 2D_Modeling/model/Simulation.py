@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize as opti
 from scipy.optimize import least_squares   
 import matplotlib.pyplot as plt
-import plotly.graph.objects as go
+# import plotly.graph.objects as go
 
 
 
@@ -277,7 +277,7 @@ class Simulation():
         )
 
         # Initial guess
-        x0 = np.array([np.deg2rad(-6), np.deg2rad(40), 5, np.deg2rad(-5)])
+        x0 = np.array([self.lb_pitch_angle, np.deg2rad(40), 5, np.deg2rad(-5)])
 
         # Perform least squares optimization
         result = least_squares(residuals, x0, bounds = bounds, max_nfev=10000)
