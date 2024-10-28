@@ -329,7 +329,7 @@ class Simulation():
 
 
             # Initial guess
-            x0 = np.array([np.deg2rad(-5), np.deg2rad(40), 5, np.deg2rad(-5)])
+            x0 = np.array([np.deg2rad(-5), np.deg2rad(40), 80, np.deg2rad(-5)])
 
             # Minimize the objective function
             result = opti.minimize(objective, x0, bounds= self.bounds)

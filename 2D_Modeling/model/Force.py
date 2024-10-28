@@ -30,7 +30,7 @@ class ControlForce():
     
     def calculate_cl_cd(self):
         """Calculate the lift and drag coefficients based on the angle of attack"""
-        Cl = self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (self.alpha_i + self.delta_i)  # Lift coefficient, eq. 19
+        Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (self.alpha_i + self.delta_i)  # Lift coefficient, eq. 19
         Cd = self.C_D0 + Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
         return Cl, Cd
 
