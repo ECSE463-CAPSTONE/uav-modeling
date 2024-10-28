@@ -122,7 +122,7 @@ class Simulation():
         self.initialize_rigid_body()
         self.sim = Simulation_Result()
 
-
+        #Set optimization bounds
         self.lb_tow_force, self.ub_tow_force = np.array([0, 2000])
         self.lb_delta_t, self.ub_delta_t = np.deg2rad(np.array([0, 70]))
         self.lb_delta_i, self.ub_delta_i = np.deg2rad(np.array([-20, 10]))
@@ -216,7 +216,6 @@ class Simulation():
             ax_body = total_force[0] / self.rigidbody.mass  
             az_body = total_force[1] / self.rigidbody.mass  
             self.sim.bf_acceleration[i] = np.array([ax_body, az_body])
-
 
             alpha_body = total_moment / self.rigidbody.Iyy  # pitch angular acceleration
             self.sim.angular_acceleration[i] = alpha_body 
@@ -399,14 +398,6 @@ class Simulation():
             pitch_angle, delta_t, towing_force, delta_i = args
             return towing_force
         
-        #Set bounds
-        # lb_tow_force, ub_tow_force = np.array([0, 1000])
-        # lb_delta_t, ub_delta_t = np.deg2rad(np.array([0, 70]))
-        # lb_delta_i, ub_delta_i = np.deg2rad(np.array([-20, 10]))
-        # lb_pitch_angle, ub_pitch_angle = np.deg2rad(np.array([-8, 8]))
-        
-        # bnds = ((lb_pitch_angle, ub_pitch_angle), (lb_delta_t, ub_delta_t), (lb_tow_force, ub_tow_force),(lb_delta_i, ub_delta_i))
-
         # Set constraints
         def constraint_function_force_x(args):
             pitch_angle, delta_t, towing_force, delta_i = args
@@ -440,12 +431,6 @@ class Simulation():
             {'type': 'eq', 'fun': constraint_function_force_z},
             {'type': 'eq', 'fun': constraint_function_moment_y}
         )
-
-        #Set initial guess
-        # x0 = (np.mean([lb_pitch_angle, ub_pitch_angle]),  
-        #       np.mean([lb_delta_t, ub_delta_t]), 
-        #       np.mean([lb_tow_force,ub_tow_force]), 
-        #       np.mean([lb_delta_i, ub_delta_i]))
 
         x0 = (np.deg2rad(-5), np.deg2rad(40), 5, np.deg2rad(-5))
 
@@ -522,7 +507,6 @@ class Simulation():
       
         return result
 
-
     # Solve for equilibrium state given a fixed pitch angle
     def solve_equilibrium_state_fsolve_fixed_pitch(self, pitch_angle, initial_velocity):
         # Initialize system
@@ -573,6 +557,3 @@ class Simulation():
 
         
         return result
-
-
-  

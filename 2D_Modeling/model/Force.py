@@ -4,8 +4,9 @@ rho = 1000
 g = 9.81
 
 class ControlForce():
-    def __init__(self, location, delta_i, A, C_L_alpha, C_D0, e = 0.85):
-        self.A = A # aspect ratio
+    def __init__(self, location, delta_i, AR, area, C_L_alpha, C_D0, e = 0.85):
+        self.AR = AR # aspect ratio
+        self.Area = area # surface area
         self.C_L_alpha = C_L_alpha #slope of 2D lift curve
         self.C_D0 = C_D0 #parasite drag coefficient
         self.e = e # Oswald efficiency factor
@@ -28,8 +29,8 @@ class ControlForce():
     
     def calculate_cl_cd(self):
         """Calculate the lift and drag coefficients based on the angle of attack"""
-        Cl = self.C_L_alpha * self.A / ( 2 * (self.A + 4) / (self.A + 2))  * (self.alpha_i + self.delta_i)  # Lift coefficient, eq. 19
-        Cd = self.C_D0 + Cl**2 / (np.pi * self.A * self.e)  # Drag coefficient, eq. 20
+        Cl = self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (self.alpha_i + self.delta_i)  # Lift coefficient, eq. 19
+        Cd = self.C_D0 + Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
         return Cl, Cd
 
    
@@ -44,8 +45,8 @@ class ControlForce():
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
-        lift = 0.5 * rho * Cl * self.A * V ** 2
-        drag = 0.5 * rho * Cd * self.A * V ** 2
+        lift = 0.5 * rho * Cl * self.Area * V ** 2
+        drag = 0.5 * rho * Cd * self.Area * V ** 2
 
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
 
