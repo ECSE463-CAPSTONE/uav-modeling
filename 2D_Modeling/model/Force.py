@@ -17,7 +17,7 @@ class ControlForce():
     def calculate_alpha_i(self, velocity_states):
         u, w, q = velocity_states
         r_x, r_z = self.location 
-        alpha_i = np.arctan((w - q * r_x) / (u + q * r_z))
+        alpha_i = np.arctan((w - q * r_x) / (u + q * r_z + 1e-8))
 
         if np.isnan(alpha_i):
             alpha_i = 0
@@ -43,6 +43,7 @@ class ControlForce():
         Cl, Cd = self.calculate_cl_cd()
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
+
         lift = 0.5 * rho * Cl * self.A * V ** 2
         drag = 0.5 * rho * Cd * self.A * V ** 2
 
@@ -58,18 +59,17 @@ class HullForce():
         self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
         self.location = location
 
-    def calculate_force(self, velocity_states, rel_position):
+    def calculate_force(self, velocity_states):
         """Calculate the actual force vector from lift and drag"""
-        r_x, r_z = rel_position 
+        r_x, r_z = self.location 
         u, w, q = velocity_states
-
-        self.calculate_alpha_i(velocity_states, rel_position)
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
         lift = 0
         drag = 0.5 * rho * self.Cd * self.area * V ** 2
+        self.magnitude = np.array([drag, lift])
 
-        return np.array([drag, lift])  # Return force vector in body frame (x, z)
+        return V, lift, drag # Return force vector in body frame (x, z)
 
 
 class TowingForce():
