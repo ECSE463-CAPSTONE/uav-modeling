@@ -59,7 +59,7 @@ class Simulation_Result():
         # axs[0].set_ylim([-3, 3])
         axs[0].legend(loc="best")
 
-        axs[1].plot(self.time, self.inertial_velocity[:  , 0] - 2, label="x-velocity (m/s)")
+        axs[1].plot(self.time, self.inertial_velocity[:  , 0] , label="x-velocity (m/s)")
         axs[1].plot(self.time, self.inertial_velocity[:  , 1], label="z-velocity (m/s)")
         axs[1].set_title("Inertial Velocity")
         # axs[1].set_ylim([1.5, 2.5])
