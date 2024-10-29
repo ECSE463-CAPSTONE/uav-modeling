@@ -53,13 +53,13 @@ class Simulation_Result():
 
         # Plot 1: Inertial position, velocity, and acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-        axs[0].plot(self.time, self.inertial_position[:, 0], label="x-position (m)")
+        axs[0].plot(self.time, self.inertial_position[:, 0] , label="x-position (m)")
         axs[0].plot(self.time, self.inertial_position[: , 1], label="z-position (m)")
         axs[0].set_title("Inertial Position")
         # axs[0].set_ylim([-3, 3])
         axs[0].legend(loc="best")
 
-        axs[1].plot(self.time, self.inertial_velocity[:  , 0], label="x-velocity (m/s)")
+        axs[1].plot(self.time, self.inertial_velocity[:  , 0] - 2, label="x-velocity (m/s)")
         axs[1].plot(self.time, self.inertial_velocity[:  , 1], label="z-velocity (m/s)")
         axs[1].set_title("Inertial Velocity")
         # axs[1].set_ylim([1.5, 2.5])
@@ -195,10 +195,13 @@ class Simulation():
             self.sim.control_force_C_D[i, f_i] = Cd   
             self.sim.control_force_C_L[i, f_i] = Cl
             self.sim.control_flow_velocity[i, f_i] = V
-            self.sim.control_force_magnitude[i, f_i] = np.array([drag, lift])  
+            self.sim.control_force_magnitude[i, f_i] = np.array([drag, lift])
 
-            
 
+    ##################################################################################################
+    ######################################## FORWARD EULER ###########################################
+    ##################################################################################################
+    
     def simulate_forward_euler(self, N, dt, initial_state):
         #  Initialize the simulation
         dt = self.sim.dt
@@ -242,8 +245,8 @@ class Simulation():
         return self.sim
     
     ##################################################################################################
-    ######################################## EQUILIBRIUM STATE ########################################
-    #################################################################################################
+    ######################################## RK45 SOLVER #############################################
+    ##################################################################################################
 
     def transformation_matrix_dot(self, theta, theta_dot):
         """Returns the time derivative of the transformation matrix."""
@@ -330,6 +333,7 @@ class Simulation():
             y0=initial_state,
             t_eval=t_eval,
             method='RK45'
+        
         )
 
         # Store the simulation results
@@ -342,6 +346,37 @@ class Simulation():
 
         return self.sim, solution
     
+    ##################################################################################################
+    ######################################## CALCULATE JACOBIAN ######################################
+    ##################################################################################################
+
+    def calculate_jacobian(self, v, pitch_angle, epsilon):
+        # Initialize system
+        self.sim = Simulation_Result(dt = 1, N = 2, nb_control_forces= len(self.controlForces))
+        full_initial_state = np.zeros(9)
+        full_initial_state[2] = pitch_angle
+        full_initial_state[3] = v
+        self.initialize_system(full_initial_state)
+
+        x = np.zeros(6)
+        x[2] = pitch_angle
+        x[3] = v
+        xdot = self.system_dynamics(0, x)
+        # Calculate the Jacobian
+        jacobian = np.zeros((6, 6))
+        for i in range(6):
+            # Perturb the state vector
+            perturbed_state = np.copy(x)
+            perturbed_state[i] += epsilon
+            # Simulate the system with the perturbed state
+            xdot_ie = np.array(self.system_dynamics(0, perturbed_state))
+            # Calculate the Jacobian element
+            jacobian[:, i] = (xdot - xdot_ie) / epsilon
+
+        return jacobian
+
+
+
     ##################################################################################################
     ######################################## EQUILIBRIUM STATE ########################################
     #################################################################################################
