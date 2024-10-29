@@ -318,9 +318,7 @@ class Simulation():
     def simulate_solve_ivp(self, N, dt, initial_state):
         """Simulates the system using solve_ivp."""
         self.sim = Simulation_Result(dt, N, len(self.controlForces))
-        full_initial_state = np.zeros(9)
-        full_initial_state[:6] = initial_state
-        self.initialize_system(full_initial_state)
+        self.initialize_system(initial_state)
 
         # Define the time span and evaluation points
         t_span = (0, N * dt)
