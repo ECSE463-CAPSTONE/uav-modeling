@@ -277,11 +277,11 @@ class Simulation():
         # 4. Calculate body-frame accelerations (q_dot_dot)
         ax_body = (
             total_force[0] / self.rigidbody.mass 
-            + self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 1]
+            + theta_dot * bf_velocities[1]
         )
         az_body = (
             total_force[1] / self.rigidbody.mass 
-            - self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 0]
+            - theta_dot * bf_velocities[0]
         )
         bf_accelerations = np.array([ax_body, az_body])
         self.sim.bf_acceleration[i] = bf_accelerations
