@@ -1,7 +1,8 @@
 "Class used to save and run simulation"
 import numpy as np
 import scipy.optimize as opti
-from scipy.optimize import least_squares   
+from scipy.optimize import least_squares 
+from scipy.integrate import solve_ivp 
 import matplotlib.pyplot as plt
 # import plotly.graph.objects as go
 
@@ -16,7 +17,7 @@ class Simulation_Result():
     def __init__(self, dt = 0.02, N = 10, nb_control_forces = 1):
         # Initialize NumPy arrays with shape (N, 2) for 2D vectors and (N,) for 1D arrays.
         # Replace `N` with the desired number of rows, depending on your data needs.
-
+        N += 1
         self.inertial_position = np.zeros((N, 2))    # 2D array for [x, z]
         self.pitch_angle = np.zeros(N)               # 1D array for pitch angle values
         self.inertial_velocity = np.zeros((N, 2))    # 2D array for [x_dot, z_dot]
@@ -42,27 +43,32 @@ class Simulation_Result():
         self.hull_force_moment = np.zeros(N)             # 1D array for hull moment
 
         self.dt = dt
-        self.N = N
+        self.N = N 
+        self.time = np.linspace(0, ( N - 1 ) * self.dt, self.N)  # Create time vector
     
     def plot_simulation_results(self):
         """Plots inertial and pitch states, as well as force magnitudes and moments."""
-        time = np.linspace(0, self.N * self.dt, self.N)  # Create time vector
         
+        # time = time[:-1]
+
         # Plot 1: Inertial position, velocity, and acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-        axs[0].plot(time, self.inertial_position[:, 0], label="x-position (m)")
-        axs[0].plot(time, self.inertial_position[: , 1], label="z-position (m)")
+        axs[0].plot(self.time, self.inertial_position[:, 0], label="x-position (m)")
+        axs[0].plot(self.time, self.inertial_position[: , 1], label="z-position (m)")
         axs[0].set_title("Inertial Position")
+        # axs[0].set_ylim([-3, 3])
         axs[0].legend(loc="best")
 
-        axs[1].plot(time, self.inertial_velocity[:  , 0], label="x-velocity (m/s)")
-        axs[1].plot(time, self.inertial_velocity[:  , 1], label="z-velocity (m/s)")
+        axs[1].plot(self.time, self.inertial_velocity[:  , 0], label="x-velocity (m/s)")
+        axs[1].plot(self.time, self.inertial_velocity[:  , 1], label="z-velocity (m/s)")
         axs[1].set_title("Inertial Velocity")
+        # axs[1].set_ylim([1.5, 2.5])
         axs[1].legend(loc="best")
 
-        axs[2].plot(time, self.inertial_acceleration[: , 0], label="x-acceleration (m/s²)")
-        axs[2].plot(time, self.inertial_acceleration[: , 1], label="z-acceleration (m/s²)")
+        axs[2].plot(self.time, self.inertial_acceleration[: , 0], label="x-acceleration (m/s²)")
+        axs[2].plot(self.time, self.inertial_acceleration[: , 1], label="z-acceleration (m/s²)")
         axs[2].set_title("Inertial Acceleration")
+        # axs[2].set_ylim([-3, 3])
         axs[2].legend(loc="best")
 
         fig.tight_layout()
@@ -70,15 +76,16 @@ class Simulation_Result():
 
         # Plot 2: Pitch angle, pitch rate, and angular acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 8))
-        axs[0].plot(time, np.rad2deg(self.pitch_angle), label="Pitch Angle (deg)")
+        axs[0].plot(self.time, np.rad2deg(self.pitch_angle), label="Pitch Angle (deg)")
         axs[0].set_title("Pitch Angle")
         axs[0].legend(loc="best")
+        
 
-        axs[1].plot(time, np.rad2deg(self.pitch_rate), label="Pitch Rate (deg/s)")
+        axs[1].plot(self.time, np.rad2deg(self.pitch_rate), label="Pitch Rate (deg/s)")
         axs[1].set_title("Pitch Rate")
         axs[1].legend(loc="best")
 
-        axs[2].plot(time, np.rad2deg(self.angular_acceleration), label="Angular Acceleration (deg/s²)")
+        axs[2].plot(self.time, np.rad2deg(self.angular_acceleration), label="Angular Acceleration (deg/s²)")
         axs[2].set_title("Angular Acceleration")
         axs[2].legend(loc="best")
 
@@ -86,26 +93,21 @@ class Simulation_Result():
         plt.show()
 
         # Plot 3: Control and hull forces (separate lift and drag) and hull moment
-        fig, axs = plt.subplots(3, 1, figsize=(10, 8))
+        fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
         # Control forces: Lift and Drag (aggregated for multiple control forces)
         control_drag = np.sum(self.control_force_magnitude[:, :, 0], axis=1)
         control_lift = np.sum(self.control_force_magnitude[:, :, 1], axis=1)
-        axs[0].plot(time, control_drag, label="Control Drag Force (N)")
-        axs[0].plot(time, control_lift, label="Control Lift Force (N)")
+        axs[0].plot(self.time, control_drag, label="Control Drag Force (N)")
+        axs[0].plot(self.time, control_lift, label="Control Lift Force (N)")
         axs[0].set_title("Control Forces")
         axs[0].legend(loc="best")
 
         # Hull forces: Lift and Drag
-        axs[1].plot(time, self.hull_force_magnitude[:, 0], label="Hull Drag Force (N)")
-        axs[1].plot(time, self.hull_force_magnitude[:, 1], label="Hull Lift Force (N)")
+        axs[1].plot(self.time, self.hull_force_magnitude[:, 0], label="Hull Drag Force (N)")
+        axs[1].plot(self.time, self.hull_force_magnitude[:, 1], label="Hull Lift Force (N)")
         axs[1].set_title("Hull Forces")
         axs[1].legend(loc="best")
-
-        # Hull moment
-        axs[2].plot(time, self.hull_force_moment, label="Hull Force Moment (Nm)")
-        axs[2].set_title("Hull Force Moment")
-        axs[2].legend(loc="best")
 
         fig.tight_layout()
         plt.show()
@@ -126,7 +128,7 @@ class Simulation():
         self.lb_tow_force, self.ub_tow_force = np.array([0, 2000])
         self.lb_delta_t, self.ub_delta_t = np.deg2rad(np.array([0, 70]))
         self.lb_delta_i, self.ub_delta_i = np.deg2rad(np.array([-20, 10]))
-        self.lb_pitch_angle, self.ub_pitch_angle = np.deg2rad(np.array([-8, -4]))
+        self.lb_pitch_angle, self.ub_pitch_angle = np.deg2rad(np.array([-8, -2]))
 
         self.bounds = [
             (self.lb_pitch_angle, self.ub_pitch_angle),
@@ -154,8 +156,8 @@ class Simulation():
 
         # Transformation matrix T
         T = np.array([
-            [cos_theta, -sin_theta],
-            [sin_theta, cos_theta]
+            [cos_theta, sin_theta],
+            [-sin_theta, cos_theta]
         ])
         return T
     
@@ -205,7 +207,7 @@ class Simulation():
         self.initialize_system(initial_state)
         
         for i in range(1, N):
-            print(i)
+            # print(i)
             theta = self.sim.pitch_angle[i - 1]
             # 1. Calculate forces and moments in the body frame
             self.solve_forces( i - 1)
@@ -213,8 +215,8 @@ class Simulation():
             total_moment = self.rigidbody.sum_moments(theta)  # M_body = My
 
             # 2. Calculate body frame accelerations (q_dot_dot)
-            ax_body = total_force[0] / self.rigidbody.mass  
-            az_body = total_force[1] / self.rigidbody.mass  
+            ax_body = total_force[0] / self.rigidbody.mass + self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 1]
+            az_body = total_force[1] / self.rigidbody.mass - self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 0] 
             self.sim.bf_acceleration[i] = np.array([ax_body, az_body])
 
             alpha_body = total_moment / self.rigidbody.Iyy  # pitch angular acceleration
@@ -238,7 +240,107 @@ class Simulation():
             self.sim.pitch_angle[i] = self.sim.pitch_angle[i-1] + self.sim.pitch_rate[i] * dt
 
         return self.sim
+    
+    ##################################################################################################
+    ######################################## EQUILIBRIUM STATE ########################################
+    #################################################################################################
 
+    def transformation_matrix_dot(self, theta, theta_dot):
+        """Returns the time derivative of the transformation matrix."""
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+        return np.array([[-sin_theta * theta_dot, cos_theta * theta_dot],
+                         [-cos_theta * theta_dot, -sin_theta * theta_dot]])
+
+    def system_dynamics(self, t, y):
+        """ODE function for solve_ivp. Calculates derivatives at each timestep."""
+        i = int(t / self.sim.dt)  # Determine the current step index
+
+        # Unpack the state vector y = [x, z, theta, x_dot, z_dot, theta_dot]
+        x, z, theta, x_dot, z_dot, theta_dot = y
+
+        # 1. Calculate body-frame velocities (bf_velocities)
+        T = self.transformation_matrix(theta)
+        bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities
+        self.sim.bf_velocity[i] = bf_velocities  
+
+        # 2. Solve for forces using the body-frame velocities
+        self.solve_forces(i)
+
+        # 3. Get total forces and moments
+        total_force = self.rigidbody.sum_forces(theta)  # [Fx, Fz] in body frame
+        total_moment = self.rigidbody.sum_moments(theta)  # Pitch moment
+
+        # 4. Calculate body-frame accelerations (q_dot_dot)
+        ax_body = (
+            total_force[0] / self.rigidbody.mass 
+            + self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 1]
+        )
+        az_body = (
+            total_force[1] / self.rigidbody.mass 
+            - self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 0]
+        )
+        bf_accelerations = np.array([ax_body, az_body])
+        self.sim.bf_acceleration[i] = bf_accelerations
+
+        # 5. Calculate angular acceleration (alpha_body)
+        alpha_body = total_moment / self.rigidbody.Iyy
+        self.sim.angular_acceleration[i] = alpha_body
+
+        # 6. Transform body accelerations to the inertial frame using T_full
+        T_dot = self.transformation_matrix_dot(theta, theta_dot)
+        T_full = np.block([
+            [T, np.zeros((2, 2))],
+            [T_dot, T]
+        ])
+
+        # Combine accelerations and velocities into vectors for transformation
+        body_acc_vector = np.hstack((bf_velocities, bf_accelerations))
+        inertial_acc_vector = T_full @ body_acc_vector
+
+        # Extract inertial-frame accelerations from the transformed vector
+        inertial_acceleration = inertial_acc_vector[2:]  # [x_ddot, z_ddot]
+        self.sim.inertial_acceleration[i] = inertial_acceleration
+
+        # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
+        return [
+            x_dot,
+            z_dot,
+            theta_dot,
+            inertial_acceleration[0],  # x_ddot in inertial frame
+            inertial_acceleration[1],  # z_ddot in inertial frame
+            alpha_body                 # theta_ddot (angular acceleration)
+        ]
+
+    def simulate_solve_ivp(self, N, dt, initial_state):
+        """Simulates the system using solve_ivp."""
+        self.sim = Simulation_Result(dt, N, len(self.controlForces))
+        full_initial_state = np.zeros(9)
+        full_initial_state[:6] = initial_state
+        self.initialize_system(full_initial_state)
+
+        # Define the time span and evaluation points
+        t_span = (0, N * dt)
+        t_eval = np.linspace(0, N * dt, N + 1)
+
+        # Call solve_ivp to solve the dynamics
+        solution = solve_ivp(
+            fun=self.system_dynamics,
+            t_span=t_span,
+            y0=initial_state,
+            t_eval=t_eval,
+            method='RK45'
+        )
+
+        # Store the simulation results
+        self.sim.inertial_position = np.column_stack((solution.y[0], solution.y[1]))
+        self.sim.pitch_angle = solution.y[2]
+        self.sim.inertial_velocity = np.column_stack((solution.y[3], solution.y[4]))
+        self.sim.pitch_rate = solution.y[5]
+        # self.sim.inertial_acceleration = self.sim.inertial_acceleration[:-1]
+        # self.sim.time = self.sim.time[:-1]
+
+        return self.sim, solution
     
     ##################################################################################################
     ######################################## EQUILIBRIUM STATE ########################################
@@ -246,17 +348,20 @@ class Simulation():
 
     def solve_equilibrium_state_LS(self, initial_velocity):
         # Initialize system
-        initial_state = np.array([0, 0, 0, initial_velocity, 0, 0, 0, 0, 0])
-        self.initialize_system(initial_state)
+        
 
         # Define residual function for least squares optimization
         def residuals(args):
             pitch_angle, delta_t, towing_force, delta_i = args
 
+            initial_state = np.array([0, 0, pitch_angle, initial_velocity, 0, 0, 0, 0, 0])
+            self.initialize_system(initial_state)
+
             # Set parameters for the system
             self.towingForce.delta_t = delta_t
             self.towingForce.magnitude = towing_force
             self.controlForces[0].delta_i = delta_i
+            
 
             # Solve forces
             self.solve_forces(0)
@@ -280,7 +385,7 @@ class Simulation():
 
         # Perform least squares optimization
         result = least_squares(residuals, x0, bounds = bounds, max_nfev=10000)
-        residuals = residuals(result.x)
+        residual = residuals(result.x)
 
         print("Optimization Results:")
         print("----------------------")
@@ -291,9 +396,9 @@ class Simulation():
         print(f"{'Towing Force':<15} {result.x[2]:<15.2f} {'N':<10}")
         print(f"{'Delta_i':<15} {np.rad2deg(result.x[3]):<15.2f} {'degrees':<10}")
         print("----------------------")
-        print(f"{'Fx:':<15} {residuals[0]:<15.2f}{'N':<10}")
-        print(f"{'Fz:':<15} {residuals[1]:<15.2f}{'N':<10}")
-        print(f"{'My:':<15} {residuals[2]:<15.2f}{'Nm':<10}")
+        print(f"{'Fx:':<15} {residual[0]:<15.2f}{'N':<10}")
+        print(f"{'Fz:':<15} {residual[1]:<15.2f}{'N':<10}")
+        print(f"{'My:':<15} {residual[2]:<15.2f}{'Nm':<10}")
         print(f"Residual Norm: {result.cost:.6f}")
 
         if result.success:
@@ -304,13 +409,14 @@ class Simulation():
         return result.x
     
     def solve_equilibrium_state_sqrt(self, initial_velocity):
-            # Initialize system
-            initial_state = np.array([0, 0, 0, initial_velocity, 0, 0, 0, 0, 0])
-            self.initialize_system(initial_state)
-
+            
             # Define objective function for minimization
             def objective(args):
                 pitch_angle, delta_t, towing_force, delta_i = args
+
+                # Initialize system
+                initial_state = np.array([0, 0, pitch_angle, initial_velocity, 0, 0, 0, 0, 0])
+                self.initialize_system(initial_state)
 
                 # Set the parameters for the system
                 self.towingForce.delta_t = delta_t
@@ -360,10 +466,6 @@ class Simulation():
     
     def solve_equilibrium_state_min_FT(self, initial_velocity):
         #Solve for X-Dot = 0
-        
-        #Initialize system
-        initial_state = np.array([0, 0, 0, initial_velocity, 0, 0, 0, 0, 0])
-        self.initialize_system(initial_state)
 
         #Define objective function
         def objective_function_1(args):
@@ -373,7 +475,9 @@ class Simulation():
             self.towingForce.magnitude = towing_force
             self.controlForces[0].delta_i = delta_i
 
-            #initialize system
+            #Initialize system
+            initial_state = np.array([0, 0, pitch_angle, initial_velocity, 0, 0, 0, 0, 0])
+            self.initialize_system(initial_state)
 
             #Solve forces
             self.solve_forces(0)
