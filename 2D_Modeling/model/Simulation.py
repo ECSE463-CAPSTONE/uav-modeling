@@ -323,12 +323,13 @@ class Simulation():
         # Define the time span and evaluation points
         t_span = (0, N * dt)
         t_eval = np.linspace(0, N * dt, N + 1)
+        y0 = initial_state[:6]
 
         # Call solve_ivp to solve the dynamics
         solution = solve_ivp(
             fun=self.system_dynamics,
             t_span=t_span,
-            y0=initial_state,
+            y0=y0,
             t_eval=t_eval,
             method='RK45'
         
