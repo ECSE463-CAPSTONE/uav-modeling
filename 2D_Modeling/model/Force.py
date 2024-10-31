@@ -25,10 +25,10 @@ class ControlForce():
             alpha_i = 0
 
         #alpha i is before adding in control surface angle of attack
-        self.alpha_i = alpha_i
+        return alpha_i
 
     
-    def calculate_cl_cd(self):
+    def calculate_cl_cd(self, alpha_i):
         """Calculate the lift and drag coefficients based on the angle of attack"""
         Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (self.alpha_i + self.delta_i)  # Lift coefficient, eq. 19
         Cd = self.C_D0 + Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
@@ -41,8 +41,8 @@ class ControlForce():
         r_x, r_z = self.location 
         u, w, q = velocity_states
 
-        self.calculate_alpha_i(velocity_states)
-        Cl, Cd = self.calculate_cl_cd()
+        alpha_i = self.calculate_alpha_i(velocity_states)
+        Cl, Cd = self.calculate_cl_cd(alpha_i)
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
@@ -51,7 +51,7 @@ class ControlForce():
 
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
 
-        return Cl, Cd, V, lift, drag
+        return Cl, Cd, V, lift, drag, alpha_i
 
 
 class HullForce():

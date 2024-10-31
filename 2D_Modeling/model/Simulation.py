@@ -18,47 +18,42 @@ class Simulation_Result():
         # Initialize NumPy arrays with shape (N, 2) for 2D vectors and (N,) for 1D arrays.
         # Replace `N` with the desired number of rows, depending on your data needs.
         N += 1
-        self.inertial_position = np.zeros((N, 2))    # 2D array for [x, z]
-        self.pitch_angle = np.zeros(N)               # 1D array for pitch angle values
-        self.inertial_velocity = np.zeros((N, 2))    # 2D array for [x_dot, z_dot]
-        self.pitch_rate = np.zeros(N)                # 1D array for pitch rate values
-        self.inertial_acceleration = np.zeros((N, 2))# 2D array for acceleration in [x_dot, z_dot]
-        self.angular_acceleration = np.zeros(N)      # 1D array for angular acceleration values
+        self.inertial_position = []    # 2D array for [x, z]
+        self.pitch_angle = []               # 1D array for pitch angle values
+        self.inertial_velocity = []    # 2D array for [x_dot, z_dot]
+        self.pitch_rate = []                # 1D array for pitch rate values
+        self.inertial_acceleration = [] # 2D array for acceleration in [x_dot, z_dot]
+        self.angular_acceleration = []      # 1D array for angular acceleration values
 
        
-        self.bf_velocity = np.zeros((N, 2))          # 2D array for body-frame velocity
-        self.bf_acceleration = np.zeros((N, 2))      # 2D array for body-frame acceleration
+        self.bf_velocity = []          # 2D array for body-frame velocity
+        self.bf_acceleration = []      # 2D array for body-frame acceleration
 
         #Tow
-        self.tow_force_x = np.zeros(N) # 1D array for body-frame x force of different control forces
-        self.tow_force_z = np.zeros(N) # 1D array for body-frame z force of different control forces
-        self.tow_force_moment = np.zeros(N)          # 1D array for moment
+        self.tow_force_body = [] # 1D array for body-frame x force of different control forces
+        self.tow_force_moment = []          # 1D array for moment
 
         #Control
-        self.control_force_C_D = np.zeros((N, nb_control_forces))         # 1D array for drag force values
-        self.control_force_C_L = np.zeros((N, nb_control_forces))         # 1D array for lift force values
-        self.control_flow_velocity = np.zeros((N, nb_control_forces, 2))  # 2D array for control flow velocity
-        self.control_force_magnitude = np.zeros((N,nb_control_forces, 2)) # 3D array for body-frame drag and lift of different control forces
-        self.control_force_x = np.zeros((N,nb_control_forces)) # 1D array for body-frame x force of different control forces
-        self.control_force_z = np.zeros((N,nb_control_forces)) # 1D array for body-frame z force of different control forces
-        self.control_force_alpha_i = np.zeros(N)         # 1D array for angle of attack
-        self.control_force_moment = np.zeros(N)          # 1D array for moment
+        self.control_force_C_D = []                 # 1D array for drag force values
+        self.control_force_C_L = []                 # 1D array for lift force values
+        self.control_flow_velocity = []         # 2D array for control flow velocity
+        self.control_force_inertial = []       # 3D array for body-frame drag and lift of different control forces
+        self.control_force_body = []               # 1D array for body-frame x force of different control forces
+        self.control_force_alpha_i = []         # 1D array for angle of attack
+        self.control_force_moment = []          # 1D array for moment
 
         #Hull
-        self.hull_flow_velocity = np.zeros(N)       # 2D array for hull flow velocity
-        self.hull_force_magnitude = np.zeros((N, 2))     # 2D array for hull drag and lift in inertial frame
-        self.hull_force_x = np.zeros(N)     # Hull force x component in body frame
-        self.hull_force_z = np.zeros(N)     # Hull force z component in body frame
-        self.hull_force_moment = np.zeros(N)             # 1D array for hull moment
+        self.hull_flow_velocity = []        # 2D array for hull flow velocity
+        self.hull_force_inertial = []       # 2D array for hull drag and lift in inertial frame
+        self.hull_force_body = []           # Hull force x, z component in body frame
+        self.hull_force_moment = []             # 1D array for hull moment
 
         #Buoyancy
-        self.buoyancy_force_x = np.zeros(N)     # Hull force x component in body frame
-        self.buoyancy_force_z = np.zeros(N)     # Hull force z component in body frame
-        self.buoyancy_moment = np.zeros(N)             # 1D array for hull moment
+        self.buoyancy_force_body = []     # Hull force x, z component in body frame
+        self.buoyancy_moment = []             # 1D array for hull moment
 
         #Mass
-        self.mass_force_x = np.zeros(N)     # Hull force x component in body frame
-        self.mass_force_z = np.zeros(N)     # Hull force z component in body frame
+        self.mass_force_body = []     # Hull force x, z component in body frame
 
         self.i = 0 # iteration number
         self.dt = dt
@@ -189,26 +184,34 @@ class Simulation():
         self.sim.bf_velocity[0] = T.T @ self.sim.inertial_velocity[0]
         self.sim.bf_acceleration[0] = T.T @ self.sim.inertial_acceleration[0]
           
-    def solve_forces(self, i):
+    def solve_forces(self, u, w, q):
         # Extract velocity states
-        u, w = self.sim.bf_velocity[i]
-        q = self.sim.pitch_rate[i]
         velocity_states = [u, w, q]
+        
         # Solve hull force
         V, lift, drag = self.hullForce.calculate_force(velocity_states)
-        self.sim.hull_force_magnitude[i] = np.array([drag, lift])
-        self.sim.hull_flow_velocity[i] = V
+        hull_force_magnitude = np.array([drag, lift])
+        hull_flow_velocity = V
 
         ## Find control forces
+        control_force_C_D = []
+        control_force_C_L = []
+        control_flow_velocity = []
+        control_force_magnitude  = []
+        control_force_alpha_i = []
+
         for f_i, force in enumerate(self.rigidbody.control_forces):
             # Calculate control lift and drag force [drag, lift]
-            Cl, Cd, V, lift, drag = force.calculate_force(velocity_states)
+            Cl, Cd, V, lift, drag, alpha_i = force.calculate_force(velocity_states)
         
             # Store values
-            self.sim.control_force_C_D[i, f_i] = Cd   
-            self.sim.control_force_C_L[i, f_i] = Cl
-            self.sim.control_flow_velocity[i, f_i] = V
-            self.sim.control_force_magnitude[i, f_i] = np.array([drag, lift])
+            control_force_C_D.append(Cd)
+            control_force_C_L.append(Cl)
+            control_flow_velocity.append(V)
+            control_force_magnitude.append([drag, lift])
+            control_force_alpha_i.append(alpha_i)
+        
+        return hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i
 
 
     ##################################################################################################
@@ -278,12 +281,10 @@ class Simulation():
         # 1. Calculate body-frame velocities (bf_velocities)
         T = self.transformation_matrix(theta)
         bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities
-        self.sim.bf_velocity[i] = bf_velocities  
-        self.sim.pitch_rate[i] = theta_dot
-
         
         # 2. Solve for forces using the body-frame velocities
-        self.solve_forces(i)
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i = \
+            self.solve_forces(bf_velocities[0], bf_velocities[1], theta_dot)
 
         # 3. Get total forces and moments
         total_force_x, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
@@ -318,33 +319,41 @@ class Simulation():
         # Extract inertial-frame accelerations from the transformed vector
         inertial_acceleration = inertial_acc_vector[2:]  # [x_ddot, z_ddot]
 
-        # save results
-        self.sim.mass_force_x[i] = mass_force_x
-        self.sim.mass_force_z[i] = mass_force_z
-        self.sim.buoyancy_force_x[i] = buoyancy_force_x
-        self.sim.buoyancy_force_z[i] = buoyancy_force_z
-        self.sim.buoyancy_moment[i] = buoyancy_moment
-        self.sim.tow_force_x[i] = tow_force_x
-        self.sim.tow_force_z[i] = tow_force_z
-        self.sim.tow_force_moment[i] = tow_force_moment
-        self.sim.control_force_x[i] = control_force_x
-        self.sim.control_force_z[i] = control_force_z
-        self.sim.control_force_moment[i] = control_force_moment
-        self.sim.hull_force_x[i] = hull_force_x
-        self.sim.hull_force_z[i] = hull_force_z
-        self.sim.hull_force_moment[i] = hull_force_moment
+        ## Append results      
+        #Tow
+        self.sim.tow_force_body.append([tow_force_x,tow_force_z])
+        self.sim.tow_force_moment.append(tow_force_moment)          # 1D array for moment
 
-        self.sim.bf_acceleration[i] = bf_accelerations
+        #Control
+        self.sim.control_force_C_D.append([control_force_C_D])                 # 1D array for drag force values
+        self.sim.control_force_C_L.append([control_force_C_L])                 # 1D array for lift force values
+        self.sim.control_flow_velocity.append([control_flow_velocity])         # 2D array for control flow velocity
+        self.sim.control_force_inertial.append([control_force_magnitude])       # 3D array for body-frame drag and lift of different control forces
+        self.sim.control_force_body.append([control_force_x,control_force_z])               # 1D array for body-frame x force of different control forces
+        self.sim.control_force_alpha_i.append([control_force_alpha_i])         # 1D array for angle of attack
+        self.sim.control_force_moment.append([control_force_moment])          # 1D array for moment
 
-        self.sim.inertial_acceleration[i] = inertial_acceleration
-        self.sim.angular_acceleration[i] = alpha_body
+        #Hull
+        self.sim.hull_flow_velocity.append([hull_flow_velocity[0],hull_flow_velocity[1]])        # 2D array for hull flow velocity
+        self.sim.hull_force_inertial.append([hull_force_magnitude[0],hull_force_magnitude[1]])       # 2D array for hull drag and lift in inertial frame
+        self.sim.hull_force_body.append([hull_force_x,hull_force_z])           # Hull force x, z component in body frame
+        self.sim.hull_force_moment.append(hull_force_moment)             # 1D array for hull moment
+
+        #Buoyancy
+        self.sim.buoyancy_force_body.append([buoyancy_force_x,buoyancy_force_z])     # Hull force x, z component in body frame
+        self.sim.buoyancy_moment.append(buoyancy_moment)             # 1D array for hull moment
+
+        #Mass
+        self.sim.mass_force_body.append([mass_force_x,mass_force_z])     # Hull force x, z component in body frame
+       
+        self.sim.bf_velocity.append([bf_velocities])         # 2D array for body-frame velocity
+        self.sim.bf_acceleration.append(bf_accelerations[0],bf_accelerations[1])    # 2D array for body-frame acceleratio
+        self.sim.pitch_rate.append(theta_dot)
+
+        self.sim.inertial_acceleration.append([inertial_acceleration[0],inertial_acceleration[1]])
+        self.sim.angular_acceleration.apennd(alpha_body)
 
         self.sim.i += 1
-        ###DEBUGGING###
-        if i > 196:
-            print("hello")
-        ###############
-
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
         return [
@@ -373,7 +382,6 @@ class Simulation():
             y0=y0,
             t_eval=t_eval,
             method='RK45'
-        
         )
 
         # Store the simulation results
