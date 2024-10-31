@@ -283,16 +283,17 @@ class Simulation():
         self.solve_forces(i)
 
         # 3. Get total forces and moments
-        total_force = self.rigidbody.sum_forces(theta)  # [Fx, Fz] in body frame
+        total_force_x, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
+                total_force_z, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z = self.rigidbody.sum_forces(theta)  # [Fx, Fz] in body frame
         total_moment = self.rigidbody.sum_moments(theta)  # Pitch moment
 
         # 4. Calculate body-frame accelerations (q_dot_dot)
         ax_body = (
-            total_force[0] / self.rigidbody.mass 
+            total_force_x / self.rigidbody.mass 
             + theta_dot * bf_velocities[1]
         )
         az_body = (
-            total_force[1] / self.rigidbody.mass 
+            total_force_z / self.rigidbody.mass 
             - theta_dot * bf_velocities[0]
         )
         bf_accelerations = np.array([ax_body, az_body])
@@ -316,6 +317,19 @@ class Simulation():
         # Extract inertial-frame accelerations from the transformed vector
         inertial_acceleration = inertial_acc_vector[2:]  # [x_ddot, z_ddot]
         self.sim.inertial_acceleration[i] = inertial_acceleration
+
+
+        # save results
+        self.sim.mass_force_x = mass_force_x
+        self.sim.buoyancy_force_x = buoyancy_force_x
+        self.sim.tow_force_x = tow_force_x
+        self.sim.control_force_x = control_force_x
+        self.sim.hull_force_x = hull_force_x
+        self.sim.mass_force_z = mass_force_z
+        self.sim.buoyancy_force_z = buoyancy_force_z
+        self.sim.tow_force_z = tow_force_z
+        self.sim.control_force_z = control_force_z
+        self.sim.hull_force_z = hull_force_z
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
         return [
@@ -462,8 +476,8 @@ class Simulation():
         self.solve_forces(0)
 
         # Calculate sum of forces/moments        
-        _,self.mass_force_x, self.buoyancy_force_x, self.tow_force_x, self.control_force_x, self.hull_force_x , _, self.mass_force_z, self.buoyancy_force_z, self.tow_force_z, self.control_force_z, self.hull_force_z = self.rigidbody.sum_forces(result.x[0])
-        _, self.buoyancy_moment, self.tow_force_moment, self.control_force_moment, self.hull_force_moment = self.rigidbody.sum_moments(result.x[0])
+        _,self.sim.mass_force_x, self.sim.buoyancy_force_x, self.sim.tow_force_x, self.sim.control_force_x, self.sim.hull_force_x , _, self.sim.mass_force_z, self.sim.buoyancy_force_z, self.sim.tow_force_z, self.sim.control_force_z, self.sim.hull_force_z = self.rigidbody.sum_forces(result.x[0])
+        _, self.sim.buoyancy_moment, self.sim.tow_force_moment, self.sim.control_force_moment, self.sim.hull_force_moment = self.rigidbody.sum_moments(result.x[0])
 
         return result.x
     
