@@ -29,18 +29,36 @@ class Simulation_Result():
         self.bf_velocity = np.zeros((N, 2))          # 2D array for body-frame velocity
         self.bf_acceleration = np.zeros((N, 2))      # 2D array for body-frame acceleration
 
+        #Tow
+        self.tow_force_x = np.zeros(N) # 1D array for body-frame x force of different control forces
+        self.tow_force_z = np.zeros(N) # 1D array for body-frame z force of different control forces
+        self.tow_force_moment = np.zeros(N)          # 1D array for moment
+
+        #Control
         self.control_force_C_D = np.zeros((N, nb_control_forces))         # 1D array for drag force values
         self.control_force_C_L = np.zeros((N, nb_control_forces))         # 1D array for lift force values
-        self.control_flow_velocity = np.zeros((N, nb_control_forces, 2))# 2D array for control flow velocity
-
-        # Assuming each element of control_force_magnitude is a list of lists [ [drag, lift] ]
+        self.control_flow_velocity = np.zeros((N, nb_control_forces, 2))  # 2D array for control flow velocity
         self.control_force_magnitude = np.zeros((N,nb_control_forces, 2)) # 3D array for body-frame drag and lift of different control forces
+        self.control_force_x = np.zeros((N,nb_control_forces)) # 1D array for body-frame x force of different control forces
+        self.control_force_z = np.zeros((N,nb_control_forces)) # 1D array for body-frame z force of different control forces
         self.control_force_alpha_i = np.zeros(N)         # 1D array for angle of attack
         self.control_force_moment = np.zeros(N)          # 1D array for moment
 
-        self.hull_flow_velocity = np.zeros((N, 2))       # 2D array for hull flow velocity
-        self.hull_force_magnitude = np.zeros((N, 2))     # 2D array for hull drag and lift
+        #Hull
+        self.hull_flow_velocity = np.zeros(N)       # 2D array for hull flow velocity
+        self.hull_force_magnitude = np.zeros((N, 2))     # 2D array for hull drag and lift in inertial frame
+        self.hull_force_x = np.zeros(N)     # Hull force x component in body frame
+        self.hull_force_z = np.zeros(N)     # Hull force z component in body frame
         self.hull_force_moment = np.zeros(N)             # 1D array for hull moment
+
+        #Buoyancy
+        self.buoyancy_force_x = np.zeros(N)     # Hull force x component in body frame
+        self.buoyancy_force_z = np.zeros(N)     # Hull force z component in body frame
+        self.buoyancy_moment = np.zeros(N)             # 1D array for hull moment
+
+        #Mass
+        self.mass_force_x = np.zeros(N)     # Hull force x component in body frame
+        self.mass_force_z = np.zeros(N)     # Hull force z component in body frame
 
         self.dt = dt
         self.N = N 
@@ -137,16 +155,11 @@ class Simulation():
             (self.lb_delta_i, self.ub_delta_i)
         ]
 
-
-
-    
     def initialize_rigid_body(self):
         self.rigidbody.add_tow_force(self.towingForce)
         self.rigidbody.add_hull_force(self.hullForce)
         for controlForce in self.controlForces:
             self.rigidbody.add_control_force(controlForce)
-
-
 
     def transformation_matrix(self, pitch_angle):
 
@@ -174,8 +187,7 @@ class Simulation():
         
         self.sim.bf_velocity[0] = T.T @ self.sim.inertial_velocity[0]
         self.sim.bf_acceleration[0] = T.T @ self.sim.inertial_acceleration[0]
-        
-    
+          
     def solve_forces(self, i):
         # Extract velocity states
         u, w = self.sim.bf_velocity[i]
@@ -323,12 +335,13 @@ class Simulation():
         # Define the time span and evaluation points
         t_span = (0, N * dt)
         t_eval = np.linspace(0, N * dt, N + 1)
+        y0 = initial_state[:6]
 
         # Call solve_ivp to solve the dynamics
         solution = solve_ivp(
             fun=self.system_dynamics,
             t_span=t_span,
-            y0=initial_state,
+            y0=y0,
             t_eval=t_eval,
             method='RK45'
         
@@ -381,7 +394,6 @@ class Simulation():
 
     def solve_equilibrium_state_LS(self, initial_velocity):
         # Initialize system
-        
 
         # Define residual function for least squares optimization
         def residuals(args):
@@ -400,8 +412,8 @@ class Simulation():
             self.solve_forces(0)
 
             # Calculate sum of forces/moments
-            total_force_x, total_force_z = self.rigidbody.sum_forces(pitch_angle)
-            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
+            total_force_x, _, _, _, _, _, total_force_z, _, _, _, _, _ = self.rigidbody.sum_forces(pitch_angle)
+            total_moment_y, _, _, _, _ = self.rigidbody.sum_moments(pitch_angle)
 
             # Return the individual residuals to be minimized
             return np.array([total_force_x, total_force_z, total_moment_y])
@@ -420,6 +432,7 @@ class Simulation():
         result = least_squares(residuals, x0, bounds = bounds, max_nfev=10000)
         residual = residuals(result.x)
 
+        # Print Results
         print("Optimization Results:")
         print("----------------------")
         print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
@@ -438,6 +451,19 @@ class Simulation():
             print("Optimization successful!")
         else:
             print("Optimization failed:", result.message)
+
+        #Save equilibrium state
+        # Set parameters for the system
+        self.towingForce.delta_t = result.x[1]
+        self.towingForce.magnitude = result.x[2]
+        self.controlForces[0].delta_i = result.x[3]
+        
+        # Solve forces
+        self.solve_forces(0)
+
+        # Calculate sum of forces/moments        
+        _,self.mass_force_x, self.buoyancy_force_x, self.tow_force_x, self.control_force_x, self.hull_force_x , _, self.mass_force_z, self.buoyancy_force_z, self.tow_force_z, self.control_force_z, self.hull_force_z = self.rigidbody.sum_forces(result.x[0])
+        _, self.buoyancy_moment, self.tow_force_moment, self.control_force_moment, self.hull_force_moment = self.rigidbody.sum_moments(result.x[0])
 
         return result.x
     

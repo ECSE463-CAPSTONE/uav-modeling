@@ -46,24 +46,36 @@ class RigidBody:
     ## Fix according to write up:
     def sum_forces(self, theta):
         """Sums up all forces acting on the body in x and z directions"""
-        #Extract pitch angle for current iteration
-        # theta = self.pitch_angle[i]
+        #Mass
+        mass_force_x = -self.mass * 9.81 *  np.sin(theta)
+        mass_force_z = self.mass * 9.81 *  np.cos(theta)
 
-        total_force_x = -(self.mass * 9.81 - self.buoyancy) *  np.sin(theta) \
-                            + self.tow_force.magnitude * np.cos(self.tow_force.delta_t - theta) \
-                            - np.sum([f.magnitude[0] * np.cos(f.alpha_i) for f in self.control_forces]) \
-                            + np.sum([f.magnitude[1] * np.sin(f.alpha_i) for f in self.control_forces]) \
-                            - self.hull_force.magnitude[0] * np.cos(theta) \
-                            + self.hull_force.magnitude[1] * np.sin(theta)
-        
-        total_force_z = (self.mass * 9.81 - self.buoyancy) *  np.cos(theta) \
-                            - self.tow_force.magnitude * np.sin(self.tow_force.delta_t - theta) \
-                            - np.sum([f.magnitude[0] * np.sin(f.alpha_i) for f in self.control_forces]) \
+        #Buoyancy Force
+        buoyancy_force_x = self.buoyancy *  np.sin(theta)
+        buoyancy_force_z = - self.buoyancy *  np.cos(theta)
+
+        #Tow Force
+        tow_force_x = self.tow_force.magnitude * np.cos(self.tow_force.delta_t - theta)
+        tow_force_z = - self.tow_force.magnitude * np.sin(self.tow_force.delta_t - theta)
+
+        #Control Force ###### COME BACK HERE TO ADJUST ONCE WE ADD MULTIPLE FOILS ###########
+        control_force_x = - np.sum([f.magnitude[0] * np.cos(f.alpha_i) for f in self.control_forces]) \
+                            + np.sum([f.magnitude[1] * np.sin(f.alpha_i) for f in self.control_forces])
+        control_force_z = - np.sum([f.magnitude[0] * np.sin(f.alpha_i) for f in self.control_forces]) \
                             - np.sum([f.magnitude[1] * np.cos(f.alpha_i) for f in self.control_forces]) \
-                            - self.hull_force.magnitude[0] * np.sin(theta) \
-                            - self.hull_force.magnitude[1] * np.cos(theta)
         
-        return np.array([total_force_x, total_force_z])
+        #Hull Force
+        hull_force_x = - self.hull_force.magnitude[0] * np.cos(theta) \
+                            + self.hull_force.magnitude[1] * np.sin(theta)
+        hull_force_z = - self.hull_force.magnitude[0] * np.sin(theta) \
+                            - self.hull_force.magnitude[1] * np.cos(theta)
+
+        #Sum of Forces
+        total_force_x = mass_force_x + buoyancy_force_x + tow_force_x + control_force_x + hull_force_x
+        total_force_z = mass_force_z + buoyancy_force_z + tow_force_z + control_force_z + hull_force_z
+        
+        return total_force_x, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
+                total_force_z, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z
     
     def sum_moments(self, theta):
         """Sums up all moments acting on the body about the y-axis (pitch)"""
@@ -92,6 +104,6 @@ class RigidBody:
         #Sum
         total_moment_y = buoyancy_moment + tow_force_moment + control_force_moment + hull_force_moment
 
-        return total_moment_y
+        return total_moment_y, buoyancy_moment, tow_force_moment, control_force_moment, hull_force_moment
     
     
