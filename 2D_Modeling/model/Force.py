@@ -14,7 +14,7 @@ class ControlForce():
         self.location = location # [r_x, r_z] location relative to COM
         self.delta_i = delta_i #Fixed angle of attack of the control force
         self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
-
+        self.alpha_i = [] #temporary value storing
     
     def calculate_alpha_i(self, velocity_states):
         u, w, q = velocity_states
@@ -30,7 +30,7 @@ class ControlForce():
     
     def calculate_cl_cd(self, alpha_i):
         """Calculate the lift and drag coefficients based on the angle of attack"""
-        Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (self.alpha_i + self.delta_i)  # Lift coefficient, eq. 19
+        Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (alpha_i + self.delta_i)  # Lift coefficient, eq. 19
         Cd = self.C_D0 + Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
         return Cl, Cd
 
@@ -50,6 +50,7 @@ class ControlForce():
         drag = 0.5 * rho * Cd * self.Area * V ** 2
 
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
+        self.alpha_i = alpha_i
 
         return Cl, Cd, V, lift, drag, alpha_i
 
