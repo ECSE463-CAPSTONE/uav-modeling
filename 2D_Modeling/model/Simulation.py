@@ -345,7 +345,7 @@ class Simulation():
         # 1. Calculate body-frame velocities (bf_velocities)
         T = self.transformation_matrix(theta)
         bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities
-        
+
         # 2. Solve for forces using the body-frame velocities
         hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i = \
             self.solve_forces(bf_velocities[0], bf_velocities[1], theta_dot)
@@ -380,7 +380,6 @@ class Simulation():
         body_acc_vector = np.hstack((bf_velocities, bf_accelerations))
         inertial_acc_vector = T_full @ body_acc_vector
         inertial_acceleration = [inertial_acc_vector[2],inertial_acc_vector[3]]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
-
         inertial_position = [x, z]           #as given by solver
         inertial_velocity = [x_dot, z_dot] #as given by solver
 
@@ -403,6 +402,7 @@ class Simulation():
             inertial_acceleration[1],  # z_ddot in inertial frame
             alpha_body                 # theta_ddot (angular acceleration)
         ]
+    
 
     def simulate_solve_ivp(self, N, dt, initial_state):
         """Simulates the system using solve_ivp."""
@@ -452,7 +452,8 @@ class Simulation():
             xdot_ie = np.array(self.system_dynamics(0, perturbed_state))
             # Calculate the Jacobian element
             jacobian[:, i] = (xdot - xdot_ie) / epsilon
-
+            print('pstate '+ str(perturbed_state))
+            print('xdot pertu '+ str(xdot_ie))
         return jacobian
 
 
