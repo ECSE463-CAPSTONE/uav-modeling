@@ -62,9 +62,12 @@ class ControlForce():
 
 
 class HullForce():
-    def __init__(self, area, location, Cd = 1.2, correction = 0.75):
+    def __init__(self,location, surface_area, frontal_area , Cd, correction, Cd_0):
+
         self.Cd = Cd * correction #Cylinder Cd Approximation
-        self.area = area
+        self.Cd_0 = Cd_0
+        self.frontal_area = frontal_area
+        self.surface_area = surface_area
         self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
         self.location = location
 
@@ -74,8 +77,13 @@ class HullForce():
         u, w, q = velocity_states
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
+
         lift = 0
-        drag = 0.5 * rho * self.Cd * self.area * V ** 2
+        
+        #Calcualte drag force
+        drag_form = 0.5 * rho * self.Cd * self.frontal_area * V ** 2
+        drag_skin = 0.5 * rho * self.Cd_0 * self.surface_area * V ** 2
+        drag = drag_form + drag_skin
         self.magnitude = np.array([drag, lift])
 
         return V, lift, drag # Return force vector in body frame (x, z)

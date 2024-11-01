@@ -61,92 +61,6 @@ class Simulation_Result():
         self.time = []
         self.time2 = []
     
-    def plot_simulation_results(self):
-        """Plots inertial and pitch states, as well as force magnitudes and moments."""
-        x_pos = []
-        y_pos = []
-        x_vel = []
-        y_vel = []
-        x_acc = []
-        y_acc = []
-        ctrl_drag = []
-        ctrl_lift = []
-        hull_drag = []
-        hull_lift = []
-
-        for i, _ in enumerate(self.inertial_position):
-            x_pos.append(self.inertial_position[i][0])
-            y_pos.append(self.inertial_position[i][1])
-            x_vel.append(self.inertial_velocity[i][0])
-            y_vel.append(self.inertial_velocity[i][1])
-            x_acc.append(self.inertial_acceleration[i][0])
-            y_acc.append(self.inertial_acceleration[i][1])
-            ctrl_drag.append(self.control_force_inertial[i][0])
-            ctrl_lift.append(self.control_force_inertial[i][1])
-            hull_drag.append(self.hull_force_inertial[i][0])
-            hull_lift.append(self.hull_force_inertial[i][1])
-
-        # Plot 1: Inertial position, velocity, and acceleration
-        fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-        axs[0].plot(self.time2, self.inertial_position[:,0] , label="x-position (m)")
-        axs[0].plot(self.time2, self.inertial_position[:,1], label="z-position (m)")
-        axs[0].set_title("Inertial Position")
-        # axs[0].set_ylim([-3, 3])
-        axs[0].legend(loc="best")
-
-        axs[1].plot(self.time2, self.inertial_velocity[:,0] , label="x-velocity (m/s)")
-        axs[1].plot(self.time2, self.inertial_velocity[:,1], label="z-velocity (m/s)")
-        axs[1].set_title("Inertial Velocity")
-        # axs[1].set_ylim([1.5, 2.5])
-        axs[1].legend(loc="best")
-
-        axs[2].plot(self.time2, x_acc, label="x-acceleration (m/s²)")
-        axs[2].plot(self.time2, y_acc, label="z-acceleration (m/s²)")
-        axs[2].set_title("Inertial Acceleration")
-        # axs[2].set_ylim([-3, 3])
-        axs[2].legend(loc="best")
-
-        fig.tight_layout()
-        plt.show()
-
-        # Plot 2: Pitch angle, pitch rate, and angular acceleration
-        fig, axs = plt.subplots(3, 1, figsize=(10, 8))
-        axs[0].plot(self.time2, np.rad2deg(self.pitch_angle), label="Pitch Angle (deg)")
-        axs[0].set_title("Pitch Angle")
-        axs[0].legend(loc="best")
-        
-
-        axs[1].plot(self.time2, np.rad2deg(self.pitch_rate), label="Pitch Rate (deg/s)")
-        axs[1].set_title("Pitch Rate")
-        axs[1].legend(loc="best")
-
-        axs[2].plot(self.time, np.rad2deg(self.angular_acceleration), label="Angular Acceleration (deg/s²)")
-        axs[2].set_title("Angular Acceleration")
-        axs[2].legend(loc="best")
-
-        fig.tight_layout()
-        plt.show()
-
-        # Plot 3: Control and hull forces (separate lift and drag) and hull moment
-        fig, axs = plt.subplots(2, 1, figsize=(10, 8))
-
-        # Control forces: Lift and Drag (aggregated for multiple control forces)
-        ####control_drag = np.sum(self.control_force_inertial[:, :, 0], axis=1)
-        ####control_lift = np.sum(self.control_force_inertial[:, :, 1], axis=1)
-        axs[0].plot(self.time2, ctrl_drag, label="Control Drag Force (N)")
-        axs[0].plot(self.time2, ctrl_lift, label="Control Lift Force (N)")
-        axs[0].set_title("Control Forces")
-        axs[0].legend(loc="best")
-
-        # Hull forces: Lift and Drag
-        axs[1].plot(self.time2, hull_drag, label="Hull Drag Force (N)")
-        axs[1].plot(self.time2, hull_lift, label="Hull Lift Force (N)")
-        axs[1].set_title("Hull Forces")
-        axs[1].legend(loc="best")
-
-        fig.tight_layout()
-        plt.show()
-
     def save_simulation_results(self, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
                                 control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
                                 hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
@@ -403,11 +317,9 @@ class Simulation():
             alpha_body                 # theta_ddot (angular acceleration)
         ]
     
-
     def simulate_solve_ivp(self, N, dt, initial_state):
         """Simulates the system using solve_ivp."""
         self.sim = Simulation_Result(dt, N)
-        #### self.initialize_system(initial_state) #can delete
 
         # Define the time span and evaluation points
         t_span = (0, N * dt)
@@ -464,13 +376,11 @@ class Simulation():
         self.sim = temp_save #Reassociate the correct self.sim
         return jacobian
 
-
-
     ##################################################################################################
     ######################################## EQUILIBRIUM STATE ########################################
     #################################################################################################
 
-    def solve_equilibrium_state_LS(self, initial_velocity):
+    def solve_equilibrium_state_LS(self, initial_velocity, print_results = 0):
         # Initialize system
         self.eq_sim = Simulation_Result(0, 0)
 
@@ -508,24 +418,25 @@ class Simulation():
         residual = residuals(result.x)
 
         # Print Results
-        print("Optimization Results:")
-        print("----------------------")
-        print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
-        print("----------------------")
-        print(f"{'Pitch Angle':<15} {np.rad2deg(result.x[0]):<15.2f} {'degrees':<10}")
-        print(f"{'Delta_t':<15} {np.rad2deg(result.x[1]):<15.2f} {'degrees':<10}")
-        print(f"{'Towing Force':<15} {result.x[2]:<15.2f} {'N':<10}")
-        print(f"{'Delta_i':<15} {np.rad2deg(result.x[3]):<15.2f} {'degrees':<10}")
-        print("----------------------")
-        print(f"{'Fx:':<15} {residual[0]:<15.2f}{'N':<10}")
-        print(f"{'Fz:':<15} {residual[1]:<15.2f}{'N':<10}")
-        print(f"{'My:':<15} {residual[2]:<15.2f}{'Nm':<10}")
-        print(f"Residual Norm: {result.cost:.6f}")
+        if print_results:
+            print("Optimization Results:")
+            print("----------------------")
+            print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
+            print("----------------------")
+            print(f"{'Pitch Angle':<15} {np.rad2deg(result.x[0]):<15.2f} {'degrees':<10}")
+            print(f"{'Delta_t':<15} {np.rad2deg(result.x[1]):<15.2f} {'degrees':<10}")
+            print(f"{'Towing Force':<15} {result.x[2]:<15.2f} {'N':<10}")
+            print(f"{'Delta_i':<15} {np.rad2deg(result.x[3]):<15.2f} {'degrees':<10}")
+            print("----------------------")
+            print(f"{'Fx:':<15} {residual[0]:<15.2f}{'N':<10}")
+            print(f"{'Fz:':<15} {residual[1]:<15.2f}{'N':<10}")
+            print(f"{'My:':<15} {residual[2]:<15.2f}{'Nm':<10}")
+            print(f"Residual Norm: {result.cost:.6f}")
 
-        if result.success:
-            print("Optimization successful!")
-        else:
-            print("Optimization failed:", result.message)
+            if result.success :
+                print("Optimization successful!")
+            else:
+                print("Optimization failed:", result.message)
 
         ## Save equilibrium state
         # Set parameters for the system

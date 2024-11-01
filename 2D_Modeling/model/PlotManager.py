@@ -117,3 +117,91 @@ class PlotManager():
         plt.title('Free Body Diagram with Rotated Forces and Rectangle')
 
         plt.show()
+
+
+    def plot_simulation_results(self,sim_result:object):
+        """Plots inertial and pitch states, as well as force magnitudes and moments."""
+        #Extract data
+        x_pos = []
+        y_pos = []
+        x_vel = []
+        y_vel = []
+        x_acc = []
+        y_acc = []
+        ctrl_drag = []
+        ctrl_lift = []
+        hull_drag = []
+        hull_lift = []
+
+        for i, _ in enumerate(sim_result.inertial_position):
+            x_pos.append(sim_result.inertial_position[i][0])
+            y_pos.append(sim_result.inertial_position[i][1])
+            x_vel.append(sim_result.inertial_velocity[i][0])
+            y_vel.append(sim_result.inertial_velocity[i][1])
+            x_acc.append(sim_result.inertial_acceleration[i][0])
+            y_acc.append(sim_result.inertial_acceleration[i][1])
+            ctrl_drag.append(sim_result.control_force_inertial[i][0])
+            ctrl_lift.append(sim_result.control_force_inertial[i][1])
+            hull_drag.append(sim_result.hull_force_inertial[i][0])
+            hull_lift.append(sim_result.hull_force_inertial[i][1])
+
+        # Plot 1: Inertial position, velocity, and acceleration
+        fig, axs = plt.subplots(3, 1, figsize=(10, 10))
+        axs[0].plot(sim_result.time2, sim_result.inertial_position[:,0] , label="x-position (m)")
+        axs[0].plot(sim_result.time2, sim_result.inertial_position[:,1], label="z-position (m)")
+        axs[0].set_title("Inertial Position")
+        # axs[0].set_ylim([-3, 3])
+        axs[0].legend(loc="best")
+
+        axs[1].plot(sim_result.time2, sim_result.inertial_velocity[:,0] , label="x-velocity (m/s)")
+        axs[1].plot(sim_result.time2, sim_result.inertial_velocity[:,1], label="z-velocity (m/s)")
+        axs[1].set_title("Inertial Velocity")
+        # axs[1].set_ylim([1.5, 2.5])
+        axs[1].legend(loc="best")
+
+        axs[2].plot(sim_result.time2, x_acc, label="x-acceleration (m/s²)")
+        axs[2].plot(sim_result.time2, y_acc, label="z-acceleration (m/s²)")
+        axs[2].set_title("Inertial Acceleration")
+        # axs[2].set_ylim([-3, 3])
+        axs[2].legend(loc="best")
+
+        fig.tight_layout()
+        plt.show()
+
+        # Plot 2: Pitch angle, pitch rate, and angular acceleration
+        fig, axs = plt.subplots(3, 1, figsize=(10, 8))
+        axs[0].plot(sim_result.time2, np.rad2deg(sim_result.pitch_angle), label="Pitch Angle (deg)")
+        axs[0].set_title("Pitch Angle")
+        axs[0].legend(loc="best")
+        
+
+        axs[1].plot(sim_result.time2, np.rad2deg(sim_result.pitch_rate), label="Pitch Rate (deg/s)")
+        axs[1].set_title("Pitch Rate")
+        axs[1].legend(loc="best")
+
+        axs[2].plot(sim_result.time, np.rad2deg(sim_result.angular_acceleration), label="Angular Acceleration (deg/s²)")
+        axs[2].set_title("Angular Acceleration")
+        axs[2].legend(loc="best")
+
+        fig.tight_layout()
+        plt.show()
+
+        # Plot 3: Control and hull forces (separate lift and drag) and hull moment
+        fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+
+        # Control forces: Lift and Drag (aggregated for multiple control forces)
+        ####control_drag = np.sum(sim_result.control_force_inertial[:, :, 0], axis=1)
+        ####control_lift = np.sum(sim_result.control_force_inertial[:, :, 1], axis=1)
+        axs[0].plot(sim_result.time2, ctrl_drag, label="Control Drag Force (N)")
+        axs[0].plot(sim_result.time2, ctrl_lift, label="Control Lift Force (N)")
+        axs[0].set_title("Control Forces")
+        axs[0].legend(loc="best")
+
+        # Hull forces: Lift and Drag
+        axs[1].plot(sim_result.time2, hull_drag, label="Hull Drag Force (N)")
+        axs[1].plot(sim_result.time2, hull_lift, label="Hull Lift Force (N)")
+        axs[1].set_title("Hull Forces")
+        axs[1].legend(loc="best")
+
+        fig.tight_layout()
+        plt.show()
