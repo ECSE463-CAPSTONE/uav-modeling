@@ -68,6 +68,11 @@ class Simulation_Result():
         y_vel = []
         x_acc = []
         y_acc = []
+        ctrl_drag = []
+        ctrl_lift = []
+        hull_drag = []
+        hull_lift = []
+
         for i, _ in enumerate(self.inertial_position):
             x_pos.append(self.inertial_position[i][0])
             y_pos.append(self.inertial_position[i][1])
@@ -75,6 +80,10 @@ class Simulation_Result():
             y_vel.append(self.inertial_velocity[i][1])
             x_acc.append(self.inertial_acceleration[i][0])
             y_acc.append(self.inertial_acceleration[i][1])
+            ctrl_drag.append(self.control_force_inertial[i][0])
+            ctrl_lift.append(self.control_force_inertial[i][1])
+            hull_drag.append(self.hull_force_inertial[i][0])
+            hull_lift.append(self.hull_force_inertial[i][1])
 
         # Plot 1: Inertial position, velocity, and acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 10))
@@ -121,16 +130,16 @@ class Simulation_Result():
         fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
         # Control forces: Lift and Drag (aggregated for multiple control forces)
-        control_drag = np.sum(self.control_force_magnitude[:, :, 0], axis=1)
-        control_lift = np.sum(self.control_force_magnitude[:, :, 1], axis=1)
-        axs[0].plot(self.time, control_drag, label="Control Drag Force (N)")
-        axs[0].plot(self.time, control_lift, label="Control Lift Force (N)")
+        ####control_drag = np.sum(self.control_force_inertial[:, :, 0], axis=1)
+        ####control_lift = np.sum(self.control_force_inertial[:, :, 1], axis=1)
+        axs[0].plot(self.time, ctrl_drag, label="Control Drag Force (N)")
+        axs[0].plot(self.time, ctrl_lift, label="Control Lift Force (N)")
         axs[0].set_title("Control Forces")
         axs[0].legend(loc="best")
 
         # Hull forces: Lift and Drag
-        axs[1].plot(self.time, self.hull_force_magnitude[:, 0], label="Hull Drag Force (N)")
-        axs[1].plot(self.time, self.hull_force_magnitude[:, 1], label="Hull Lift Force (N)")
+        axs[1].plot(self.time, hull_drag, label="Hull Drag Force (N)")
+        axs[1].plot(self.time, hull_lift, label="Hull Lift Force (N)")
         axs[1].set_title("Hull Forces")
         axs[1].legend(loc="best")
 
@@ -151,7 +160,7 @@ class Simulation_Result():
         self.control_force_C_D.append(control_force_C_D)                 # 1D array for drag force values
         self.control_force_C_L.append(control_force_C_L)                 # 1D array for lift force values
         self.control_flow_velocity.append(control_flow_velocity)         # 2D array for control flow velocity
-        self.control_force_inertial.append(control_force_magnitude)       # 3D array for body-frame drag and lift of different control forces
+        self.control_force_inertial.append([control_force_magnitude[0][0],control_force_magnitude[0][1]])       # 3D array for body-frame drag and lift of different control forces
         self.control_force_body.append([control_force_x,control_force_z])               # 1D array for body-frame x force of different control forces
         self.control_force_alpha_i.append(control_force_alpha_i)         # 1D array for angle of attack
         self.control_force_moment.append(control_force_moment)          # 1D array for moment
