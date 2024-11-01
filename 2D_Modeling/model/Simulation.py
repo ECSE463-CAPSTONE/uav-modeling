@@ -278,12 +278,12 @@ class Simulation():
         # 1. Calculate body-frame velocities (bf_velocities)
         T = self.transformation_matrix(theta)
         bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities
-        self.sim.bf_velocity[i] = bf_velocities  
-        self.sim.pitch_rate[i] = theta_dot
+        #self.sim.bf_velocity[i] = bf_velocities  
+        #self.sim.pitch_rate[i] = theta_dot
 
         
         # 2. Solve for forces using the body-frame velocities
-        self.solve_forces(i)
+        #self.solve_forces(i)
 
         # 3. Get total forces and moments
         total_force_x, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
@@ -319,32 +319,31 @@ class Simulation():
         inertial_acceleration = inertial_acc_vector[2:]  # [x_ddot, z_ddot]
 
         # save results
-        self.sim.mass_force_x[i] = mass_force_x
-        self.sim.mass_force_z[i] = mass_force_z
-        self.sim.buoyancy_force_x[i] = buoyancy_force_x
-        self.sim.buoyancy_force_z[i] = buoyancy_force_z
-        self.sim.buoyancy_moment[i] = buoyancy_moment
-        self.sim.tow_force_x[i] = tow_force_x
-        self.sim.tow_force_z[i] = tow_force_z
-        self.sim.tow_force_moment[i] = tow_force_moment
-        self.sim.control_force_x[i] = control_force_x
-        self.sim.control_force_z[i] = control_force_z
-        self.sim.control_force_moment[i] = control_force_moment
-        self.sim.hull_force_x[i] = hull_force_x
-        self.sim.hull_force_z[i] = hull_force_z
-        self.sim.hull_force_moment[i] = hull_force_moment
+        # self.sim.mass_force_x[i] = mass_force_x
+        # self.sim.mass_force_z[i] = mass_force_z
+        # self.sim.buoyancy_force_x[i] = buoyancy_force_x
+        # self.sim.buoyancy_force_z[i] = buoyancy_force_z
+        # self.sim.buoyancy_moment[i] = buoyancy_moment
+        # self.sim.tow_force_x[i] = tow_force_x
+        # self.sim.tow_force_z[i] = tow_force_z
+        # self.sim.tow_force_moment[i] = tow_force_moment
+        # self.sim.control_force_x[i] = control_force_x
+        # self.sim.control_force_z[i] = control_force_z
+        # self.sim.control_force_moment[i] = control_force_moment
+        # self.sim.hull_force_x[i] = hull_force_x
+        # self.sim.hull_force_z[i] = hull_force_z
+        # self.sim.hull_force_moment[i] = hull_force_moment
 
-        self.sim.bf_acceleration[i] = bf_accelerations
+        # self.sim.bf_acceleration[i] = bf_accelerations
 
-        self.sim.inertial_acceleration[i] = inertial_acceleration
-        self.sim.angular_acceleration[i] = alpha_body
+        # self.sim.inertial_acceleration[i] = inertial_acceleration
+        # self.sim.angular_acceleration[i] = alpha_body
 
-        self.sim.i += 1
+        # self.sim.i += 1
         ###DEBUGGING###
         if i > 196:
             print("hello")
         ###############
-
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
         return [
@@ -355,6 +354,7 @@ class Simulation():
             inertial_acceleration[1],  # z_ddot in inertial frame
             alpha_body                 # theta_ddot (angular acceleration)
         ]
+    
 
     def simulate_solve_ivp(self, N, dt, initial_state):
         """Simulates the system using solve_ivp."""
@@ -412,7 +412,8 @@ class Simulation():
             xdot_ie = np.array(self.system_dynamics(0, perturbed_state))
             # Calculate the Jacobian element
             jacobian[:, i] = (xdot - xdot_ie) / epsilon
-
+            print('pstate '+ str(perturbed_state))
+            print('xdot pertu '+ str(xdot_ie))
         return jacobian
 
 
