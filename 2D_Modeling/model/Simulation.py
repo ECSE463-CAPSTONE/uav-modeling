@@ -197,43 +197,25 @@ class Simulation():
     
     def simulate_forward_euler(self, N, dt, initial_state):
         #  Initialize the simulation
-        dt = self.sim.dt
-        self.sim = Simulation_Result(dt, N, len(self.controlForces))
+        # dt = self.sim.dt
+        # self.sim = Simulation_Result(dt, N, len(self.controlForces))
        
-        self.initialize_system(initial_state)
+        # self.initialize_system(initial_state)
         
-        for i in range(1, N):
-            # print(i)
-            theta = self.sim.pitch_angle[i - 1]
-            # 1. Calculate forces and moments in the body frame
-            self.solve_forces( i - 1)
-            total_force = self.rigidbody.sum_forces(theta)  # F_body = [Fx, Fz] in body frame
-            total_moment = self.rigidbody.sum_moments(theta)  # M_body = My
+        #     for i in range(1, N):
+        #         # print(i)
+        #         theta = self.sim.pitch_angle[i - 1]
+        #                 self.sim = Simulation_Result(dt, N)
 
-            # 2. Calculate body frame accelerations (q_dot_dot)
-            ax_body = total_force[0] / self.rigidbody.mass + self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 1]
-            az_body = total_force[1] / self.rigidbody.mass - self.sim.pitch_rate[i - 1] * self.sim.bf_velocity[i - 1, 0] 
-            self.sim.bf_acceleration[i] = np.array([ax_body, az_body])
+        #     # Define the time span and evaluation points
+        #     t_span = (0, N * dt)
+        #     t_eval = np.linspace(0, N * dt, N + 1)
+        #     y0 = initial_state[:6]
 
-            alpha_body = total_moment / self.rigidbody.Iyy  # pitch angular acceleration
-            self.sim.angular_acceleration[i] = alpha_body 
-            
-
-            # 3. Update body frame velocities (q_dot) using Euler integration
-            self.sim.bf_velocity[i, 0] = self.sim.bf_velocity[i-1, 0] + ax_body * dt  # u
-            self.sim.bf_velocity[i, 1] = self.sim.bf_velocity[i-1, 1] + az_body * dt  # w
-            self.sim.pitch_rate[i] = self.sim.pitch_rate[i-1] + alpha_body * dt  # pitch rate (q)
-
-            # 4. Transform q_dot (body velocities) to x_dot (inertial velocities)
-            T = self.transformation_matrix(self.sim.pitch_angle[i-1])  # Get the transformation matrix based on pitch angle
-            inertial_velocity = T @ self.sim.bf_velocity[i]  # Transform to [x_dot, z_dot] in inertial frame
-            self.sim.inertial_velocity[i, :] = inertial_velocity
-            
-            # 5. Update inertial frame position using Euler integration
-            self.sim.inertial_position[i, :] = self.sim.inertial_position[i-1, :] + inertial_velocity * dt
-
-            # 6. Update pitch angle (integrate angular velocity)
-            self.sim.pitch_angle[i] = self.sim.pitch_angle[i-1] + self.sim.pitch_rate[i] * dt
+        #     # Call solve_ivp to solve the dynamics
+        #     self.system_dynamics()
+        #     #     t_span=t_span,
+        #     #     y0=y0,
 
         return self.sim
     
@@ -334,14 +316,6 @@ class Simulation():
             t_eval=t_eval,
             method='RK45'
         )
-
-        # Store the simulation results
-        self.sim.time2 = solution.t
-        self.sim.inertial_position = np.column_stack((solution.y[0], solution.y[1]))
-        self.sim.pitch_angle = solution.y[2]
-        self.sim.inertial_velocity = np.column_stack((solution.y[3], solution.y[4]))
-        self.sim.pitch_rate = None
-        self.sim.pitch_rate = solution.y[5]
 
         return self.sim, solution
     

@@ -1,15 +1,16 @@
 import numpy as np
 
-rho = 1000
+rho = 999.7
 g = 9.81
+mu = 0.0000013084
 
 class ControlForce():
-    def __init__(self, location, delta_i, AR, area, C_L_alpha, C_L_alpha_offset ,C_D0, e = 0.85):
+    def __init__(self, location, delta_i, AR, area, chord, C_L_alpha, C_L_alpha_offset , e = 0.85):
         self.AR = AR # aspect ratio
         self.Area = area # surface area
+        self.chord = chord
         self.C_L_alpha = C_L_alpha #slope of 2D lift curve
         self.C_L_alpha_offset = C_L_alpha_offset #CL Alpha offset
-        self.C_D0 = C_D0 #parasite drag coefficient
         self.e = e # Oswald efficiency factor
         self.location = location # [r_x, r_z] location relative to COM
         self.delta_i = delta_i #Fixed angle of attack of the control force
@@ -28,11 +29,12 @@ class ControlForce():
         return alpha_i
 
     
-    def calculate_cl_cd(self, alpha_i):
+    def calculate_cl_cd(self, alpha_i, Re):
         """Calculate the lift and drag coefficients based on the angle of attack"""
         Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (alpha_i + self.delta_i)  # Lift coefficient, eq. 19
-        Cd = self.C_D0 + Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
-        return Cl, Cd
+        Cd_form = Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
+        Cd_skin = 0.0576/(Re**(1/5))
+        return Cl, Cd_form, Cd_skin
 
    
     # CALCULATES WITH RESPECT TO V NOT IN BODY FRAME
@@ -48,25 +50,28 @@ class ControlForce():
         elif alpha_i <= np.deg2rad(-15):
             alpha_i = np.deg2rad(-15)
 
-        Cl, Cd = self.calculate_cl_cd(alpha_i)
-        
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
+        Re = rho * V * self.chord / mu
+        Cl, Cd_form, Cd_skin = self.calculate_cl_cd(alpha_i, Re)
+
         lift = 0.5 * rho * Cl * self.Area * V ** 2
-        drag = 0.5 * rho * Cd * self.Area * V ** 2
+        drag_form = 0.5 * rho * Cd_form * self.Area * V ** 2
+        drag_skin = 0.5 * rho * Cd_skin * 2*self.Area * V ** 2
+        drag = drag_form + drag_skin
 
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
         self.alpha_i = alpha_i
 
-        return Cl, Cd, V, lift, drag, alpha_i
+        return Cl, Cd_form, V, lift, drag, alpha_i #Could add Cd_skin
 
 
 class HullForce():
-    def __init__(self,location, surface_area, frontal_area , Cd, correction, Cd_0):
+    def __init__(self,location, surface_area, frontal_area, chord , Cd, correction):
 
         self.Cd = Cd * correction #Cylinder Cd Approximation
-        self.Cd_0 = Cd_0
         self.frontal_area = frontal_area
+        self.chord = chord
         self.surface_area = surface_area
         self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
         self.location = location
@@ -81,8 +86,12 @@ class HullForce():
         lift = 0
         
         #Calcualte drag force
+        Re = rho * V * self.chord / mu
+        Cd_0 = 0.0576/(Re**(1/5))
+
+
         drag_form = 0.5 * rho * self.Cd * self.frontal_area * V ** 2
-        drag_skin = 0.5 * rho * self.Cd_0 * self.surface_area * V ** 2
+        drag_skin = 0.5 * rho * Cd_0 * self.surface_area * V ** 2
         drag = drag_form + drag_skin
         self.magnitude = np.array([drag, lift])
 
