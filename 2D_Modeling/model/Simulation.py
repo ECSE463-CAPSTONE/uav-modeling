@@ -441,16 +441,15 @@ class Simulation():
 
     def calculate_jacobian(self, v, pitch_angle, epsilon):
         # Initialize system
-        self.sim = Simulation_Result(dt = 1, N = 2, nb_control_forces= len(self.controlForces))
-        full_initial_state = np.zeros(9)
-        full_initial_state[2] = pitch_angle
-        full_initial_state[3] = v
-        self.initialize_system(full_initial_state)
+        if not not self.sim: #Temporary save of sim results if they exist
+            temp_save = self.sim
+
+        self.sim = Simulation_Result(dt = 1, N = 2)
 
         x = np.zeros(6)
         x[2] = pitch_angle
         x[3] = v
-        xdot = self.system_dynamics(0, x)
+        xdot = np.array(self.system_dynamics(0, x))
         # Calculate the Jacobian
         jacobian = np.zeros((6, 6))
         for i in range(6):
@@ -463,6 +462,8 @@ class Simulation():
             jacobian[:, i] = (xdot - xdot_ie) / epsilon
             print('pstate '+ str(perturbed_state))
             print('xdot pertu '+ str(xdot_ie))
+
+        self.sim = temp_save #Reassociate the correct self.sim
         return jacobian
 
 

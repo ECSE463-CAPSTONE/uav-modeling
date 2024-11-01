@@ -6,7 +6,11 @@ from tabulate import tabulate
 
 def plotfbd(sim:object, sim_result:object):
 # Define the rotation angle in radians
-    theta = -sim.pitch_angle[0] # Rotate by pitch (adjust as needed)
+    theta = -sim_result.pitch_angle[0] # Rotate by pitch (adjust as needed)
+
+    #Hard coding i = 0 for equilibrium purposes only
+    i = 0
+
     # Rotation matrix
     rotation_matrix = np.array([
         [np.cos(theta), -np.sin(theta)],
@@ -14,22 +18,22 @@ def plotfbd(sim:object, sim_result:object):
     ])
 
     # Define forces with their points of application (relative to origin)
-    r_xi = sim
-    r_zi = []
-    r_xh = []
-    r_zh = []
-    r_xt = []
-    r_zt = []
-    r_xb = []
-    r_zb = []
+    r_xi = sim.rigidbody.control_forces[0].location[0]
+    r_zi = sim.rigidbody.control_forces[0].location[1]
+    r_xh = sim.rigidbody.hull_force.location[0]
+    r_zh = sim.rigidbody.hull_force.location[1]
+    r_xt = sim.rigidbody.tow_force.location[0]
+    r_zt = sim.rigidbody.tow_force.location[1]
+    r_xb = sim.rigidbody.center_of_buoyancy[0]
+    r_zb = sim.rigidbody.center_of_buoyancy[1]
     
     forces = [
-        {"point": (r_xi, r_zi), "vector": (0, sim.sim.control_force_z)},            # Control z-force
-        {"point": (r_xi, r_zi), "vector": (sim.sim.control_force_x, 0)},            # Control x-force
-        {"point": (r_xh, r_zh), "vector": (sim.sim.hull_force_x, sim.sim.hull_force_z)}, # Hull drag
-        {"point": (r_xt, r_zt), "vector": (sim.sim.tow_force_x, sim.sim.tow_force_z)},   # Tow force
-        {"point": (r_xb, r_zb), "vector": (sim.sim.buoyancy_force_x, sim.sim.buoyancy_force_z)}, # Buoyancy
-        {"point": (0, 0), "vector": (sim.sim.mass_force_x, sim.sim.mass_force_z)}       # Weight
+        {"point": (r_xi, r_zi), "vector": (0, sim_result.control_force_body[i][1])},            # Control z-force
+        {"point": (r_xi, r_zi), "vector": (sim_result.control_force_body[i][0], 0)},            # Control x-force
+        {"point": (r_xh, r_zh), "vector": (sim_result.hull_force_body[i][0], sim_result.hull_force_body[i][1])}, # Hull drag
+        {"point": (r_xt, r_zt), "vector": (sim_result.tow_force_body[i][0], sim_result.tow_force_body[i][1])},   # Tow force
+        {"point": (r_xb, r_zb), "vector": (sim_result.buoyancy_force_body[i][0], sim_result.buoyancy_force_body[i][1])}, # Buoyancy
+        {"point": (0, 0), "vector": (sim_result.mass_force_body[i][0], sim_result.mass_force_body[i][1])}       # Weight
     ]
 
     # Determine the maximum length of the vectors

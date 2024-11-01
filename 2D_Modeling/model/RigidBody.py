@@ -22,12 +22,6 @@ class RigidBody:
         self.moments = []  # List of moments about the y-axis (pitch)
         self.hull_force : HullForce
 
-        # # Initial conditions for position, velocity, and pitch
-        # self.position = np.zeros((N, 2))  # 2D position [x, z]
-        # self.velocity = np.zeros((N, 2))  # 2D velocity [u, w]
-        # self.pitch_angle = np.zeros(N)  # Pitch angle (about y-axis)
-        # self.pitch_rate = np.zeros(N)  # Angular velocity (pitch rate)
-
     
     def add_tow_force(self, force):
         self.tow_force = force
