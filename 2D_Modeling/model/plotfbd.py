@@ -2,7 +2,7 @@ import os
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
-from tabulate import tabulate
+# from tabulate import tabulate
 
 def plotfbd(sim:object, sim_result:object):
 # Define the rotation angle in radians

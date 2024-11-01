@@ -59,6 +59,7 @@ class Simulation_Result():
         self.dt = dt
         self.N = N 
         self.time = []
+        self.time2 = []
     
     def plot_simulation_results(self):
         """Plots inertial and pitch states, as well as force magnitudes and moments."""
@@ -87,20 +88,20 @@ class Simulation_Result():
 
         # Plot 1: Inertial position, velocity, and acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-        axs[0].plot(self.time, x_pos , label="x-position (m)")
-        axs[0].plot(self.time, y_pos, label="z-position (m)")
+        axs[0].plot(self.time2, self.inertial_position[:,0] , label="x-position (m)")
+        axs[0].plot(self.time2, self.inertial_position[:,1], label="z-position (m)")
         axs[0].set_title("Inertial Position")
         # axs[0].set_ylim([-3, 3])
         axs[0].legend(loc="best")
 
-        axs[1].plot(self.time, x_vel , label="x-velocity (m/s)")
-        axs[1].plot(self.time, y_vel, label="z-velocity (m/s)")
+        axs[1].plot(self.time2, self.inertial_velocity[:,0] , label="x-velocity (m/s)")
+        axs[1].plot(self.time2, self.inertial_velocity[:,1], label="z-velocity (m/s)")
         axs[1].set_title("Inertial Velocity")
         # axs[1].set_ylim([1.5, 2.5])
         axs[1].legend(loc="best")
 
-        axs[2].plot(self.time, x_acc, label="x-acceleration (m/s²)")
-        axs[2].plot(self.time, y_acc, label="z-acceleration (m/s²)")
+        axs[2].plot(self.time2, x_acc, label="x-acceleration (m/s²)")
+        axs[2].plot(self.time2, y_acc, label="z-acceleration (m/s²)")
         axs[2].set_title("Inertial Acceleration")
         # axs[2].set_ylim([-3, 3])
         axs[2].legend(loc="best")
@@ -110,12 +111,12 @@ class Simulation_Result():
 
         # Plot 2: Pitch angle, pitch rate, and angular acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 8))
-        axs[0].plot(self.time, np.rad2deg(self.pitch_angle), label="Pitch Angle (deg)")
+        axs[0].plot(self.time2, np.rad2deg(self.pitch_angle), label="Pitch Angle (deg)")
         axs[0].set_title("Pitch Angle")
         axs[0].legend(loc="best")
         
 
-        axs[1].plot(self.time, np.rad2deg(self.pitch_rate), label="Pitch Rate (deg/s)")
+        axs[1].plot(self.time2, np.rad2deg(self.pitch_rate), label="Pitch Rate (deg/s)")
         axs[1].set_title("Pitch Rate")
         axs[1].legend(loc="best")
 
@@ -132,14 +133,14 @@ class Simulation_Result():
         # Control forces: Lift and Drag (aggregated for multiple control forces)
         ####control_drag = np.sum(self.control_force_inertial[:, :, 0], axis=1)
         ####control_lift = np.sum(self.control_force_inertial[:, :, 1], axis=1)
-        axs[0].plot(self.time, ctrl_drag, label="Control Drag Force (N)")
-        axs[0].plot(self.time, ctrl_lift, label="Control Lift Force (N)")
+        axs[0].plot(self.time2, ctrl_drag, label="Control Drag Force (N)")
+        axs[0].plot(self.time2, ctrl_lift, label="Control Lift Force (N)")
         axs[0].set_title("Control Forces")
         axs[0].legend(loc="best")
 
         # Hull forces: Lift and Drag
-        axs[1].plot(self.time, hull_drag, label="Hull Drag Force (N)")
-        axs[1].plot(self.time, hull_lift, label="Hull Lift Force (N)")
+        axs[1].plot(self.time2, hull_drag, label="Hull Drag Force (N)")
+        axs[1].plot(self.time2, hull_lift, label="Hull Lift Force (N)")
         axs[1].set_title("Hull Forces")
         axs[1].legend(loc="best")
 
@@ -188,17 +189,6 @@ class Simulation_Result():
         self.inertial_position.append([inertial_position[0],inertial_position[1]]) # 2D array for [x, z]
         self.pitch_angle.append(theta)             # 1D array for pitch angle values
         self.inertial_velocity.append([inertial_velocity[0],inertial_velocity[1]])    # 2D array for [x_dot, z_dot]
-
-
-
-
-
-
-
-
-
-
-
 
 
 class Simulation():
@@ -376,7 +366,8 @@ class Simulation():
         bf_accelerations = np.array([ax_body, az_body])
 
         # 5. Calculate angular acceleration (alpha_body)
-        alpha_body = total_moment / self.rigidbody.Iyy
+        c = 0
+        alpha_body = (total_moment - c * theta_dot)/ self.rigidbody.Iyy 
 
         # 6. Transform body accelerations to the inertial frame using T_full
         T_dot = self.transformation_matrix_dot(theta, theta_dot)
@@ -432,6 +423,13 @@ class Simulation():
             method='RK45'
         )
 
+        # Store the simulation results
+        self.sim.time2 = solution.t
+        self.sim.inertial_position = np.column_stack((solution.y[0], solution.y[1]))
+        self.sim.pitch_angle = solution.y[2]
+        self.sim.inertial_velocity = np.column_stack((solution.y[3], solution.y[4]))
+        self.sim.pitch_rate = None
+        self.sim.pitch_rate = solution.y[5]
 
         return self.sim, solution
     

@@ -42,6 +42,12 @@ class ControlForce():
         u, w, q = velocity_states
 
         alpha_i = self.calculate_alpha_i(velocity_states)
+        if alpha_i >= np.deg2rad(15):
+            alpha_i = np.deg2rad(15)
+
+        elif alpha_i <= np.deg2rad(-15):
+            alpha_i = np.deg2rad(-15)
+
         Cl, Cd = self.calculate_cl_cd(alpha_i)
         
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
