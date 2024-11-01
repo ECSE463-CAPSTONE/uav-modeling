@@ -59,7 +59,6 @@ class Simulation_Result():
         self.dt = dt
         self.N = N 
         self.time = []
-        self.time2 = []
     
     def save_simulation_results(self, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
                                 control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
@@ -196,26 +195,36 @@ class Simulation():
     ##################################################################################################
     
     def simulate_forward_euler(self, N, dt, initial_state):
-        #  Initialize the simulation
-        # dt = self.sim.dt
-        # self.sim = Simulation_Result(dt, N, len(self.controlForces))
-       
-        # self.initialize_system(initial_state)
-        
-        #     for i in range(1, N):
-        #         # print(i)
-        #         theta = self.sim.pitch_angle[i - 1]
-        #                 self.sim = Simulation_Result(dt, N)
+        #  Initialize the simulation results
+        self.sim = Simulation_Result(dt, N)
 
-        #     # Define the time span and evaluation points
-        #     t_span = (0, N * dt)
-        #     t_eval = np.linspace(0, N * dt, N + 1)
-        #     y0 = initial_state[:6]
+        #Solve first iteration
+        self.solve_equilibrium_state_LS(initial_state[3])
+        self.sim = self.eq_sim
+        self.sim.time = 0
+        t = 0
+        self.sim.i = 1 #start from second iteration
+        for i in range(1, N):
+            #Extract previous time step values
+            x = self.sim.inertial_position[i-1][0]
+            z = self.sim.inertial_position[i-1][1]
+            theta = self.sim.pitch_angle[i-1]
+            x_dot = self.sim.inertial_velocity[i-1][0]
+            z_dot = self.sim.inertial_velocity[i-1][1]
+            theta_dot = self.sim.pitch_rate[i-1]
 
-        #     # Call solve_ivp to solve the dynamics
-        #     self.system_dynamics()
-        #     #     t_span=t_span,
-        #     #     y0=y0,
+            X = x, z, theta, x_dot, z_dot, theta_dot
+
+            t = t + dt
+            self.system_dynamics(t,X)
+            
+            #Overwrite previous time step values with new values
+            self.sim.pitch_rate[i] += self.sim.angular_acceleration[i] * dt
+            self.sim.pitch_angle[i] += self.sim.pitch_rate[i] * dt
+            self.sim.inertial_velocity[i][0] += self.sim.inertial_acceleration[i][0]*dt
+            self.sim.inertial_velocity[i][1] += self.sim.inertial_acceleration[i][1]*dt
+            self.sim.inertial_position[i][0] += self.sim.inertial_velocity[i][0]*dt
+            self.sim.inertial_position[i][1] += self.sim.inertial_velocity[i][1]*dt
 
         return self.sim
     
@@ -232,8 +241,6 @@ class Simulation():
 
     def system_dynamics(self, t, y):
         """ODE function for solve_ivp. Calculates derivatives at each timestep."""
-        i = self.sim.i  # Determine the current step index
-
         #0. Unpack the state vector y = [x, z, theta, x_dot, z_dot, theta_dot]
         x, z, theta, x_dot, z_dot, theta_dot = y
 
@@ -262,7 +269,7 @@ class Simulation():
         bf_accelerations = np.array([ax_body, az_body])
 
         # 5. Calculate angular acceleration (alpha_body)
-        c = 0
+        c = 0  #possibly damping?????
         alpha_body = (total_moment - c * theta_dot)/ self.rigidbody.Iyy 
 
         # 6. Transform body accelerations to the inertial frame using T_full
@@ -286,7 +293,6 @@ class Simulation():
                                 buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
                                 theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
         #Iterate
-        self.sim.i += 1
         self.sim.time.append(t)
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]

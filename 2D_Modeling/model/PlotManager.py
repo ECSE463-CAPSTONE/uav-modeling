@@ -12,7 +12,7 @@ class PlotManager():
     def plotfbd(self, sim:object, sim_result:object):
     # Define the rotation angle in radians
         theta = -sim_result.pitch_angle[0] # Rotate by pitch (adjust as needed)
-
+    
         #Hard coding i = 0 for equilibrium purposes only
         i = 0
 
@@ -33,12 +33,12 @@ class PlotManager():
         r_zb = sim.rigidbody.center_of_buoyancy[1]
         
         forces = [
-            {"point": (r_xi, r_zi), "vector": (0, sim_result.control_force_body[i][1])},            # Control z-force
-            {"point": (r_xi, r_zi), "vector": (sim_result.control_force_body[i][0], 0)},            # Control x-force
-            {"point": (r_xh, r_zh), "vector": (sim_result.hull_force_body[i][0], sim_result.hull_force_body[i][1])}, # Hull drag
-            {"point": (r_xt, r_zt), "vector": (sim_result.tow_force_body[i][0], sim_result.tow_force_body[i][1])},   # Tow force
-            {"point": (r_xb, r_zb), "vector": (sim_result.buoyancy_force_body[i][0], sim_result.buoyancy_force_body[i][1])}, # Buoyancy
-            {"point": (0, 0), "vector": (sim_result.mass_force_body[i][0], sim_result.mass_force_body[i][1])}       # Weight
+            {"point": (r_xi, r_zi), "vector": (0, sim_result.control_force_body[i][1]), "label": ("Control-Force = " + str(round(sim_result.control_force_body[i][1],1)) + "N")},            # Control z-force
+            {"point": (r_xi, r_zi), "vector": (sim_result.control_force_body[i][0], 0), "label": ("Control-Force = " + str(round(sim_result.control_force_body[i][0],1)) + "N")},            # Control x-force
+            {"point": (r_xh, r_zh), "vector": (sim_result.hull_force_body[i][0], sim_result.hull_force_body[i][1]), "label": ("Hull-Force = " + str(round((sim_result.hull_force_body[i][0]**2 + sim_result.hull_force_body[i][1] **2)**(0.5),1)) + "N")}, # Hull drag
+            {"point": (r_xt, r_zt), "vector": (sim_result.tow_force_body[i][0], sim_result.tow_force_body[i][1]), "label": ("Tow-Force = " + str(round((sim_result.tow_force_body[i][0]**2 + sim_result.tow_force_body[i][1] **2)**(0.5),1)) + "N")},   # Tow force
+            {"point": (r_xb, r_zb), "vector": (sim_result.buoyancy_force_body[i][0], sim_result.buoyancy_force_body[i][1]), "label": ("Buoyancy-Force = " + str(round((sim_result.buoyancy_force_body[i][0]**2 + sim_result.buoyancy_force_body[i][1] **2)**(0.5),1)) + "N")}, # Buoyancy
+            {"point": (0, 0), "vector": (sim_result.mass_force_body[i][0], sim_result.mass_force_body[i][1]), "label": ("Mass-Force = " + str(round((sim_result.mass_force_body[i][0]**2 + sim_result.mass_force_body[i][1] **2)**(0.5),1)) + "N")}       # Weight
         ]
 
         # Determine the maximum length of the vectors
@@ -73,7 +73,7 @@ class PlotManager():
             scaled_vector = rotated_vector * scaling_factor
             
             # Store transformed point and vector
-            transformed_forces.append({"point": rotated_point, "vector": scaled_vector})
+            transformed_forces.append({"point": rotated_point, "vector": scaled_vector, "label": force["label"]})
 
         # Rotate rectangle corners
         rotated_corners = [np.dot(rotation_matrix, corner) for corner in corners]
@@ -94,11 +94,14 @@ class PlotManager():
         ax.set_xlim(x_min, x_max)
         ax.set_ylim(y_min, y_max)
 
+        cmap = plt.cm.viridis
+        colors = cmap(np.linspace(0,1,len(forces)))
         # Plot transformed forces
-        for force in transformed_forces:
+        for i, force in enumerate(transformed_forces):
             point = force["point"]
             vector = force["vector"]
-            ax.quiver(point[0], point[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color='blue')
+            label = force["label"]
+            ax.quiver(point[0], point[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color = colors[i], label = label)
             ax.plot([0,point[0]], [0,point[1]],'.-')
 
         # Plot the rotated rectangle
@@ -112,6 +115,7 @@ class PlotManager():
 
         # Optional: Add grid, labels, and title
         plt.grid(True)
+        plt.legend()
         plt.xlabel('X-axis')
         plt.ylabel('Y-axis')
         plt.title('Free Body Diagram with Rotated Forces and Rectangle')
