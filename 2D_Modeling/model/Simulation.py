@@ -460,8 +460,8 @@ class Simulation():
             xdot_ie = np.array(self.system_dynamics(0, perturbed_state))
             # Calculate the Jacobian element
             jacobian[:, i] = (xdot - xdot_ie) / epsilon
-            print('pstate '+ str(perturbed_state))
-            print('xdot pertu '+ str(xdot_ie))
+            #print('pstate '+ str(perturbed_state))
+            #print('xdot pertu '+ str(xdot_ie))
 
         self.sim = temp_save #Reassociate the correct self.sim
         return jacobian
