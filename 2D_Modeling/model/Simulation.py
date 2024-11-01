@@ -58,29 +58,40 @@ class Simulation_Result():
         self.i = 0 # iteration number
         self.dt = dt
         self.N = N 
-        self.time = np.linspace(0, ( N - 1 ) * self.dt, self.N)  # Create time vector
+        self.time = []
     
     def plot_simulation_results(self):
         """Plots inertial and pitch states, as well as force magnitudes and moments."""
-        
-        # time = time[:-1]
+        x_pos = []
+        y_pos = []
+        x_vel = []
+        y_vel = []
+        x_acc = []
+        y_acc = []
+        for i, _ in enumerate(self.inertial_position):
+            x_pos.append(self.inertial_position[i][0])
+            y_pos.append(self.inertial_position[i][1])
+            x_vel.append(self.inertial_velocity[i][0])
+            y_vel.append(self.inertial_velocity[i][1])
+            x_acc.append(self.inertial_acceleration[i][0])
+            y_acc.append(self.inertial_acceleration[i][1])
 
         # Plot 1: Inertial position, velocity, and acceleration
         fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-        axs[0].plot(self.time, self.inertial_position[:, 0] , label="x-position (m)")
-        axs[0].plot(self.time, self.inertial_position[: , 1], label="z-position (m)")
+        axs[0].plot(self.time, x_pos , label="x-position (m)")
+        axs[0].plot(self.time, y_pos, label="z-position (m)")
         axs[0].set_title("Inertial Position")
         # axs[0].set_ylim([-3, 3])
         axs[0].legend(loc="best")
 
-        axs[1].plot(self.time, self.inertial_velocity[:  , 0] , label="x-velocity (m/s)")
-        axs[1].plot(self.time, self.inertial_velocity[:  , 1], label="z-velocity (m/s)")
+        axs[1].plot(self.time, x_vel , label="x-velocity (m/s)")
+        axs[1].plot(self.time, y_vel, label="z-velocity (m/s)")
         axs[1].set_title("Inertial Velocity")
         # axs[1].set_ylim([1.5, 2.5])
         axs[1].legend(loc="best")
 
-        axs[2].plot(self.time, self.inertial_acceleration[: , 0], label="x-acceleration (m/s²)")
-        axs[2].plot(self.time, self.inertial_acceleration[: , 1], label="z-acceleration (m/s²)")
+        axs[2].plot(self.time, x_acc, label="x-acceleration (m/s²)")
+        axs[2].plot(self.time, y_acc, label="z-acceleration (m/s²)")
         axs[2].set_title("Inertial Acceleration")
         # axs[2].set_ylim([-3, 3])
         axs[2].legend(loc="best")
@@ -137,13 +148,13 @@ class Simulation_Result():
         self.tow_force_moment.append(tow_force_moment)          # 1D array for moment
 
         #Control
-        self.control_force_C_D.append([control_force_C_D])                 # 1D array for drag force values
-        self.control_force_C_L.append([control_force_C_L])                 # 1D array for lift force values
-        self.control_flow_velocity.append([control_flow_velocity])         # 2D array for control flow velocity
-        self.control_force_inertial.append([control_force_magnitude])       # 3D array for body-frame drag and lift of different control forces
+        self.control_force_C_D.append(control_force_C_D)                 # 1D array for drag force values
+        self.control_force_C_L.append(control_force_C_L)                 # 1D array for lift force values
+        self.control_flow_velocity.append(control_flow_velocity)         # 2D array for control flow velocity
+        self.control_force_inertial.append(control_force_magnitude)       # 3D array for body-frame drag and lift of different control forces
         self.control_force_body.append([control_force_x,control_force_z])               # 1D array for body-frame x force of different control forces
-        self.control_force_alpha_i.append([control_force_alpha_i])         # 1D array for angle of attack
-        self.control_force_moment.append([control_force_moment])          # 1D array for moment
+        self.control_force_alpha_i.append(control_force_alpha_i)         # 1D array for angle of attack
+        self.control_force_moment.append(control_force_moment)          # 1D array for moment
 
         #Hull
         self.hull_flow_velocity.append(hull_flow_velocity)        # 2D array for hull flow velocity
@@ -368,10 +379,10 @@ class Simulation():
         # Combine accelerations and velocities into vectors for transformation
         body_acc_vector = np.hstack((bf_velocities, bf_accelerations))
         inertial_acc_vector = T_full @ body_acc_vector
-        inertial_acceleration = inertial_acc_vector[2:]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
+        inertial_acceleration = [inertial_acc_vector[2],inertial_acc_vector[3]]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
 
-        inertial_position = [x, z, theta]           #as given by solver
-        inertial_velocity = [x_dot, z_dot, theta_dot] #as given by solver
+        inertial_position = [x, z]           #as given by solver
+        inertial_velocity = [x_dot, z_dot] #as given by solver
 
         ## Append results      
         self.sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
@@ -381,6 +392,7 @@ class Simulation():
                                 theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
         #Iterate
         self.sim.i += 1
+        self.sim.time.append(t)
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
         return [
@@ -394,8 +406,8 @@ class Simulation():
 
     def simulate_solve_ivp(self, N, dt, initial_state):
         """Simulates the system using solve_ivp."""
-        self.sim = Simulation_Result(dt, N, len(self.controlForces))
-        self.initialize_system(initial_state)
+        self.sim = Simulation_Result(dt, N)
+        #### self.initialize_system(initial_state) #can delete
 
         # Define the time span and evaluation points
         t_span = (0, N * dt)
@@ -411,13 +423,6 @@ class Simulation():
             method='RK45'
         )
 
-        # Store the simulation results
-        self.sim.inertial_position = np.column_stack((solution.y[0], solution.y[1]))
-        self.sim.pitch_angle = solution.y[2]
-        self.sim.inertial_velocity = np.column_stack((solution.y[3], solution.y[4]))
-        self.sim.pitch_rate = solution.y[5]
-        # self.sim.inertial_acceleration = self.sim.inertial_acceleration[:-1]
-        # self.sim.time = self.sim.time[:-1]
 
         return self.sim, solution
     
