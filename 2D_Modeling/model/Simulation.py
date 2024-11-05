@@ -201,7 +201,7 @@ class Simulation():
         #Solve first iteration
         self.solve_equilibrium_state_LS(initial_state[3])
         self.sim = self.eq_sim
-        self.sim.time = 0
+        self.sim.time = [0]
         t = 0
         self.sim.i = 1 #start from second iteration
         for i in range(1, N):
@@ -373,8 +373,12 @@ class Simulation():
             self.towingForce.magnitude = towing_force
             self.controlForces[0].delta_i = delta_i
             
+            # Get Boy frame velocities
+            T = self.transformation_matrix(pitch_angle)
+            bf_velocities = T.T @ np.array([initial_velocity, 0])  # Body-frame velocities
+
             # Solve forces
-            _, _, _, _, _, _, _ = self.solve_forces(initial_velocity, 0, 0)
+            _, _, _, _, _, _, _ = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)
 
             # Calculate sum of forces/moments
             total_force_x, _, _, _, _, _, total_force_z, _, _, _, _, _ = self.rigidbody.sum_forces(pitch_angle)
