@@ -191,7 +191,7 @@ class PlotManager():
         plt.show()
 
         # Plot 3: Control and hull forces (separate lift and drag) and hull moment
-        fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+        fig, axs = plt.subplots(4, 1, figsize=(10, 8))
 
         # Control forces: Lift and Drag (aggregated for multiple control forces)
         ####control_drag = np.sum(sim_result.control_force_inertial[:, :, 0], axis=1)
@@ -202,10 +202,18 @@ class PlotManager():
         axs[0].legend(loc="best")
 
         # Hull forces: Lift and Drag
-        axs[1].plot(sim_result.time, hull_drag, label="Hull Drag Force (N)")
-        axs[1].plot(sim_result.time, hull_lift, label="Hull Lift Force (N)")
-        axs[1].set_title("Hull Forces")
+        axs[1].plot(sim_result.time, sim_result.control_force_C_D, label="Control CD")
+        axs[1].plot(sim_result.time, sim_result.control_force_C_L, label="Control CL")
+        axs[1].set_title("Control Aero Coefficients")
         axs[1].legend(loc="best")
+
+        axs[2].plot(sim_result.time, sim_result.control_flow_velocity, label="Control Flow Vel")
+        axs[2].set_title("Control flow velocity")
+        axs[2].legend(loc="best")
+
+        axs[3].plot(sim_result.time, sim_result.control_force_alpha_i, label="Control Flow angle")
+        axs[3].set_title("Control flow direction")
+        axs[3].legend(loc="best")
 
         fig.tight_layout()
         plt.show()

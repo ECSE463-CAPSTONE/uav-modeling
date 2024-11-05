@@ -116,7 +116,7 @@ class Simulation():
 
         #Set optimization bounds
         self.lb_tow_force, self.ub_tow_force = np.array([0, 2000])
-        self.lb_delta_t, self.ub_delta_t = np.deg2rad(np.array([0, 70]))
+        self.lb_delta_t, self.ub_delta_t = np.deg2rad(np.array([25, 60]))
         self.lb_delta_i, self.ub_delta_i = np.deg2rad(np.array([-20, 10]))
         self.lb_pitch_angle, self.ub_pitch_angle = np.deg2rad(np.array([-8, -2]))
 
@@ -429,9 +429,19 @@ class Simulation():
         self.towingForce.magnitude = result.x[2]
         self.controlForces[0].delta_i = result.x[3]
 
+        # Get Boy frame velocities
+        T = self.transformation_matrix(theta)
+        bf_velocities = T.T @ np.array([initial_velocity, 0])  # Body-frame velocities
+        theta_dot = 0
+        inertial_position = [0,0]
+        inertial_velocity = [initial_velocity, 0]
+        inertial_acceleration = [0,0]
+        alpha_body = 0
+        bf_accelerations = [0,0]
+
         # Calculate sum of forces/moments
         hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i \
-              = self.solve_forces(initial_velocity, 0, 0)    
+              = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)    
         
         _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
                 _, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z \
@@ -439,15 +449,6 @@ class Simulation():
         
         _, buoyancy_moment, tow_force_moment, control_force_moment, hull_force_moment \
             = self.rigidbody.sum_moments(theta)  # Pitch moment
-
-        T = self.transformation_matrix(theta)
-        theta_dot = 0
-        inertial_position = [0,0]
-        inertial_velocity = [initial_velocity, 0]
-        inertial_acceleration = [0,0]
-        alpha_body = 0
-        bf_velocities = T.T @ inertial_velocity
-        bf_accelerations = T.T @ inertial_acceleration
 
         # Save equilibrium results
         self.eq_sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,

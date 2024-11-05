@@ -5,10 +5,11 @@ g = 9.81
 mu = 0.0000013084
 
 class ControlForce():
-    def __init__(self, location, delta_i, AR, area, chord, C_L_alpha, C_L_alpha_offset , e = 0.85):
+    def __init__(self, location, delta_i, AR, area, chord, stall_threshold, C_L_alpha, C_L_alpha_offset , e = 0.85):
         self.AR = AR # aspect ratio
         self.Area = area # surface area
         self.chord = chord
+        self.stall_threshold = stall_threshold
         self.C_L_alpha = C_L_alpha #slope of 2D lift curve
         self.C_L_alpha_offset = C_L_alpha_offset #CL Alpha offset
         self.e = e # Oswald efficiency factor
@@ -31,7 +32,9 @@ class ControlForce():
     
     def calculate_cl_cd(self, alpha_i, Re):
         """Calculate the lift and drag coefficients based on the angle of attack"""
-        Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  * (alpha_i + self.delta_i)  # Lift coefficient, eq. 19
+        AoA = min(np.deg2rad(self.stall_threshold),abs(alpha_i + self.delta_i)) * np.sign(alpha_i + self.delta_i)
+
+        Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  *  AoA # Lift coefficient, eq. 19
         Cd_form = Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
         Cd_skin = 0.0576/(Re**(1/5))
         return Cl, Cd_form, Cd_skin
@@ -45,10 +48,10 @@ class ControlForce():
 
         alpha_i = self.calculate_alpha_i(velocity_states)
         if alpha_i >= np.deg2rad(15):
-            alpha_i = np.deg2rad(15)
+            print("alpha_i is bigger than 15degrees")
 
         elif alpha_i <= np.deg2rad(-15):
-            alpha_i = np.deg2rad(-15)
+            print("alpha_i is smaller than -15degrees")
 
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
