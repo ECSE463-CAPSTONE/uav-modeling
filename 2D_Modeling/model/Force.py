@@ -20,7 +20,7 @@ class ControlForce():
     def calculate_alpha_i(self, velocity_states):
         u, w, q = velocity_states
         r_x, r_z = self.location 
-        alpha_i = np.arctan((w - q * r_x) / (u + q * r_z + 1e-8))
+        alpha_i = np.arctan((w - q * r_x) / (u + q * r_z))
 
         if np.isnan(alpha_i):
             alpha_i = 0
@@ -75,6 +75,16 @@ class HullForce():
         self.surface_area = surface_area
         self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
         self.location = location
+
+    def calculate_alpha_h(self, velocity_states):
+        u, w, q = velocity_states
+        r_x, r_z = self.location 
+        alpha_h = np.arctan((w - q * r_x) / (u + q * r_z))
+
+        if np.isnan(alpha_h):
+            alpha_h = 0
+
+        return alpha_h
 
     def calculate_force(self, velocity_states):
         """Calculate the actual force vector from lift and drag"""
