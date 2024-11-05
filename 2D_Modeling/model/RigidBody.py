@@ -59,10 +59,10 @@ class RigidBody:
                             - np.sum([f.magnitude[1] * np.cos(f.alpha_i) for f in self.control_forces]) \
         
         #Hull Force
-        hull_force_x = - self.hull_force.magnitude[0] * np.cos(theta) \
-                            + self.hull_force.magnitude[1] * np.sin(theta)
-        hull_force_z = - self.hull_force.magnitude[0] * np.sin(theta) \
-                            - self.hull_force.magnitude[1] * np.cos(theta)
+        hull_force_x = - self.hull_force.magnitude[0] * np.cos(self.hull_force.alpha_h) \
+                            + self.hull_force.magnitude[1] * np.sin(self.hull_force.alpha_h)
+        hull_force_z = - self.hull_force.magnitude[0] * np.sin(self.hull_force.alpha_h) \
+                            - self.hull_force.magnitude[1] * np.cos(self.hull_force.alpha_h)
 
         #Sum of Forces
         total_force_x = mass_force_x + buoyancy_force_x + tow_force_x + control_force_x + hull_force_x

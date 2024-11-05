@@ -75,6 +75,7 @@ class HullForce():
         self.surface_area = surface_area
         self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
         self.location = location
+        self.alpha_h = [] #temporary value storing
 
     def calculate_alpha_h(self, velocity_states):
         u, w, q = velocity_states
@@ -91,6 +92,7 @@ class HullForce():
         r_x, r_z = self.location 
         u, w, q = velocity_states
         
+        self.alpha_h = self.calculate_alpha_h(velocity_states)
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
         lift = 0
@@ -98,7 +100,6 @@ class HullForce():
         #Calcualte drag force
         Re = rho * V * self.chord / mu
         Cd_0 = 0.0576/(Re**(1/5))
-
 
         drag_form = 0.5 * rho * self.Cd * self.frontal_area * V ** 2
         drag_skin = 0.5 * rho * Cd_0 * self.surface_area * V ** 2
