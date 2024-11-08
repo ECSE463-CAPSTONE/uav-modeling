@@ -2,7 +2,7 @@ import numpy as np
 
 rho = 999.7
 g = 9.81
-mu = 0.0000013084
+mu = 0.001308
 
 class ControlForce():
     def __init__(self, location, delta_i, AR, area, chord, stall_threshold, C_L_alpha, C_L_alpha_offset , e = 0.85):

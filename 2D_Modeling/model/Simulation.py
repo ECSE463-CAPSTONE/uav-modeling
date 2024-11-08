@@ -199,7 +199,7 @@ class Simulation():
         self.sim = Simulation_Result(dt, N)
 
         #Solve first iteration
-        self.solve_equilibrium_state_LS(initial_state[3])
+        res = self.solve_equilibrium_state_LS(initial_state[3])
         self.sim = self.eq_sim
         self.sim.time = [0]
         t = 0
