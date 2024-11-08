@@ -123,6 +123,26 @@ class PlotManager():
         plt.show()
 
 
+    def plot_all_results(self, sim_result:object):
+        
+        sim_temp = sim_result
+        ignore = ["time","i", "dt", "N"]
+
+        #plot all
+        fig, axs = plt.subplots(len(sim_temp.__dict__.items()), 1, figsize=(10,3*len(sim_temp.__dict__.items())))
+        k = 0
+        for ch in sim_temp.__dict__.items():
+            if ch[0] not in ignore:
+                axs[k].plot(sim_temp.time, ch[1], label=ch[0])
+                axs[k].legend(loc="best")
+                k+=1          
+
+        for ax in range(k,len(sim_temp.__dict__.items()),1):
+            fig.delaxes(axs[ax])
+        #fig.tight_layout()
+        plt.show()
+
+
     def plot_simulation_results(self,sim_result:object):
         """Plots inertial and pitch states, as well as force magnitudes and moments."""
         #Extract data
