@@ -205,14 +205,20 @@ class Simulation():
         t = 0
         self.sim.i = 1 #start from second iteration
         self.sim.dt = dt
+        # Add perturbation to states
+        self.sim.pitch_angle[0] += state_pertubation[2]
+        self.sim.inertial_velocity[0][0] += state_pertubation[3]
+        self.sim.inertial_velocity[0][1] += state_pertubation[4]
+        self.sim.pitch_rate[0] += state_pertubation[5]
+
         for i in range(1, N):
             #Extract previous time step values
             x = self.sim.inertial_position[i-1][0] 
             z = self.sim.inertial_position[i-1][1]
-            theta = self.sim.pitch_angle[i-1] + state_pertubation[2]
-            x_dot = self.sim.inertial_velocity[i-1][0] + state_pertubation[3]
-            z_dot = self.sim.inertial_velocity[i-1][1] + state_pertubation[4]
-            theta_dot = self.sim.pitch_rate[i-1] + state_pertubation[5]
+            theta = self.sim.pitch_angle[i-1]
+            x_dot = self.sim.inertial_velocity[i-1][0]
+            z_dot = self.sim.inertial_velocity[i-1][1]
+            theta_dot = self.sim.pitch_rate[i-1]
 
             #Pack state vector
             X = x, z, theta, x_dot, z_dot, theta_dot
