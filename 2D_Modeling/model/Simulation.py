@@ -194,7 +194,7 @@ class Simulation():
     ######################################## FORWARD EULER ###########################################
     ##################################################################################################
     
-    def simulate_forward_euler(self, N, dt, initial_state):
+    def simulate_forward_euler(self, N, dt, initial_state, state_pertubation = [0,0,0,0,0,0]):
         #  Initialize the simulation results
         self.sim = Simulation_Result(dt, N)
 
@@ -207,12 +207,12 @@ class Simulation():
         self.sim.dt = dt
         for i in range(1, N):
             #Extract previous time step values
-            x = self.sim.inertial_position[i-1][0]
+            x = self.sim.inertial_position[i-1][0] 
             z = self.sim.inertial_position[i-1][1]
-            theta = self.sim.pitch_angle[i-1]
-            x_dot = self.sim.inertial_velocity[i-1][0]
-            z_dot = self.sim.inertial_velocity[i-1][1]
-            theta_dot = self.sim.pitch_rate[i-1]
+            theta = self.sim.pitch_angle[i-1] + state_pertubation[2]
+            x_dot = self.sim.inertial_velocity[i-1][0] + state_pertubation[3]
+            z_dot = self.sim.inertial_velocity[i-1][1] + state_pertubation[4]
+            theta_dot = self.sim.pitch_rate[i-1] + state_pertubation[5]
 
             #Pack state vector
             X = x, z, theta, x_dot, z_dot, theta_dot
