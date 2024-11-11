@@ -269,12 +269,6 @@ class Simulation():
         total_force_x, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
                 total_force_z, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z = self.rigidbody.sum_forces(theta)  # [Fx, Fz] in body frame
         total_moment, buoyancy_moment, tow_force_moment, control_force_moment, hull_force_moment = self.rigidbody.sum_moments(theta)  # Pitch moment
-
-
-        # 4. Calculate angular acceleration (alpha_body)
-        alpha_body = total_moment/ self.rigidbody.Iyy 
-        theta_dot += alpha_body * self.sim.dt
-        theta += theta_dot * self.sim.dt
  
         # 5. Calculate body-frame accelerations (q_dot_dot)
         ax_body = (
@@ -286,6 +280,11 @@ class Simulation():
             - theta_dot * bf_velocities[0]
         )
         bf_accelerations = np.array([ax_body, az_body])
+
+        # 4. Calculate angular acceleration (alpha_body)
+        alpha_body = total_moment/ self.rigidbody.Iyy 
+        theta_dot += alpha_body * self.sim.dt
+        theta += theta_dot * self.sim.dt
 
         # 6. Transform body accelerations to the inertial frame using T_full
         T_dot = self.transformation_matrix_dot(theta, theta_dot)
@@ -375,7 +374,7 @@ class Simulation():
             bf_velocities = T.T @ np.array([initial_velocity, 0])  # Body-frame velocities
 
             # Solve forces
-            _, _, _, _, _, _, _ = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)
+            _, _, _, _, _, _, _, _ = self.solve_forces(0, 0, bf_velocities[0], bf_velocities[1], 0)
 
             # Calculate sum of forces/moments
             total_force_x, _, _, _, _, _, total_force_z, _, _, _, _, _ = self.rigidbody.sum_forces(pitch_angle)
@@ -438,7 +437,7 @@ class Simulation():
 
         # Calculate sum of forces/moments
         hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t \
-              = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)    
+              = self.solve_forces(0, 0, bf_velocities[0], bf_velocities[1], 0)    
         
         _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
                 _, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z \
@@ -465,7 +464,6 @@ class Simulation():
             pitch_angle, delta_t, towing_force, delta_i = args
 
             # Set parameters for the system
-            # Set parameters for the system
             self.towingForce.delta_t = delta_t
             self.towingForce.probe_depth = delta_t * self.towingForce.drone_tow_length - self.towingForce.drone_height
             self.towingForce.magnitude = towing_force
@@ -477,7 +475,7 @@ class Simulation():
 
 
             # Return the individual residuals to be minimized
-            return np.array([x_dot, z_dot, theta_dot, inertial_acceleration_x, inertial_acceleration_z, alpha_body])
+            return np.array([x_dot-initial_velocity, z_dot, theta_dot, inertial_acceleration_x, inertial_acceleration_z, alpha_body])
 
         # # Set bounds for parameters
         bounds = (
