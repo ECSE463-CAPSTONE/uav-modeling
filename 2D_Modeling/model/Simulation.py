@@ -199,7 +199,7 @@ class Simulation():
         self.sim = Simulation_Result(dt, N)
 
         #Solve first iteration
-        res = self.solve_equilibrium_state_LS(initial_state[3])
+        res = self.solve_equilibrium_state_LS_Vel(initial_state[3])
         self.sim = self.eq_sim
         self.sim.time = [0]
         t = 0
@@ -218,7 +218,7 @@ class Simulation():
             X = x, z, theta, x_dot, z_dot, theta_dot
 
             t = t + dt
-            self.system_dynamics(t,X)
+            self.system_dynamics(t,X,True)
             
             #Overwrite previous time step values with new values
      #       self.sim.pitch_rate[i] += self.sim.angular_acceleration[i] * dt
@@ -241,7 +241,7 @@ class Simulation():
         return np.array([[-sin_theta * theta_dot, cos_theta * theta_dot],
                          [-cos_theta * theta_dot, -sin_theta * theta_dot]])
 
-    def system_dynamics(self, t, y):
+    def system_dynamics(self, t, y, save_sim=0):
         """ODE function for solve_ivp. Calculates derivatives at each timestep."""
         #0. Unpack the state vector y = [x, z, theta, x_dot, z_dot, theta_dot]
         x, z, theta, x_dot, z_dot, theta_dot = y #Inertial Frame
@@ -290,14 +290,15 @@ class Simulation():
         inertial_velocity = [x_dot + inertial_acceleration[0] * self.sim.dt, z_dot + inertial_acceleration[1] * self.sim.dt] #as given by solver
         inertial_position = [x + inertial_velocity[0] * self.sim.dt, z + inertial_velocity[1] * self.sim.dt]           #as given by solver
 
-        ## Append results      
-        self.sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
-                                control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
-                                hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
-                                buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
-                                theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
-        #Iterate
-        self.sim.time.append(t)
+        ## Append results
+        if save_sim:
+            self.sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
+                                    control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
+                                    hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
+                                    buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
+                                    theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
+            #Iterate
+            self.sim.time.append(t)
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
         return [
@@ -463,249 +464,98 @@ class Simulation():
         
         return result.x
     
-    def solve_equilibrium_state_sqrt(self, initial_velocity):
-            
-            # Define objective function for minimization
-            def objective(args):
-                pitch_angle, delta_t, towing_force, delta_i = args
+    def solve_equilibrium_state_LS_Vel(self, initial_velocity, print_results = 0):
+    # Initialize system
+        self.eq_sim = Simulation_Result(0, 0)
 
-                # Initialize system
-                initial_state = np.array([0, 0, pitch_angle, initial_velocity, 0, 0, 0, 0, 0])
-                self.initialize_system(initial_state)
+        # Define residual function for least squares optimization
+        def residuals(args):
+            pitch_angle, delta_t, towing_force, delta_i = args
 
-                # Set the parameters for the system
-                self.towingForce.delta_t = delta_t
-                self.towingForce.magnitude = towing_force
-                self.controlForces[0].delta_i = delta_i
-                
-                # Solve forces
-                self.solve_forces(0)
+            # Set parameters for the system
+            self.towingForce.delta_t = delta_t
+            self.towingForce.magnitude = towing_force
+            self.controlForces[0].delta_i = delta_i
 
-                # Calculate sum of forces/moments
-                total_force_x, total_force_z = self.rigidbody.sum_forces(pitch_angle) 
-                total_moment_y = self.rigidbody.sum_moments(pitch_angle)
+            y = 0, 0, pitch_angle, initial_velocity, 0, 0
 
-                # Return the sum of squares of equations to minimize
-                return total_force_x**2 + total_force_z**2 + total_moment_y**2
+            [x_dot, z_dot, theta_dot, inertial_acceleration_x, inertial_acceleration_z, alpha_body] = self.system_dynamics(0, y)
 
 
-            # Initial guess
-            x0 = np.array([np.deg2rad(-5), np.deg2rad(40), 80, np.deg2rad(-5)])
+            # Return the individual residuals to be minimized
+            return np.array([x_dot, z_dot, theta_dot, inertial_acceleration_x, inertial_acceleration_z, alpha_body])
 
-            # Minimize the objective function
-            result = opti.minimize(objective, x0, bounds= self.bounds)
-            total_force_x, total_force_z = self.rigidbody.sum_forces(result.x[0]) 
-            total_moment_y = self.rigidbody.sum_moments(result.x[0])
+        # # Set bounds for parameters
+        bounds = (
+            # pitch angle, delta_t, tow force, delta_i
+            [self.lb_pitch_angle, self.lb_delta_t, self.lb_tow_force, self.lb_delta_i],  # Lower bounds ()
+            [self.ub_pitch_angle, self.ub_delta_t, self.ub_tow_force, self.ub_delta_i]   # Upper bounds
+        )
 
-            if result.success:
-                print("Optimization Results:")
-                print("----------------------")
-                print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
-                print("----------------------")
-                print(f"{'Pitch Angle':<15} {np.rad2deg(result.x[0]):<15.2f} {'degrees':<10}")
-                print(f"{'Delta_t':<15} {np.rad2deg(result.x[1]):<15.2f} {'degrees':<10}")
-                print(f"{'Towing Force':<15} {result.x[2]:<15.2f} {'N':<10}")
-                print(f"{'Delta_i':<15} {np.rad2deg(result.x[3]):<15.2f} {'degrees':<10}")
-                print("----------------------")
-                print(f"{'Fx constraint':<15} {total_force_x:<15.2f} {'N':<10}")
-                print(f"{'Fz constraint':<15} {total_force_z:<15.2f} {'N':<10}")
-                print(f"{'My constraint':<15} {total_moment_y:<15.2f} {'Nm':<10}")   
+        # Initial guess
+        x0 = np.array([self.lb_pitch_angle, np.deg2rad(40), 5, np.deg2rad(-5)])
 
-                print(f"Objective Function Value: {result.fun}")
+        # Perform least squares optimization
+        result = least_squares(residuals, x0, bounds = bounds, max_nfev=100000)
+        residual = residuals(result.x)
+
+        # Print Results
+        if print_results:
+            print("Optimization Results:")
+            print("----------------------")
+            print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
+            print("----------------------")
+            print(f"{'Pitch Angle':<15} {np.rad2deg(result.x[0]):<15.2f} {'degrees':<10}")
+            print(f"{'Delta_t':<15} {np.rad2deg(result.x[1]):<15.2f} {'degrees':<10}")
+            print(f"{'Towing Force':<15} {result.x[2]:<15.2f} {'N':<10}")
+            print(f"{'Delta_i':<15} {np.rad2deg(result.x[3]):<15.2f} {'degrees':<10}")
+            print("----------------------")
+            print(f"{'Inertial Vel X:':<15} {residual[0]:<15.2f}{'m/s':<10}")
+            print(f"{'Inertial Vel Z:':<15} {residual[1]:<15.2f}{'m/s':<10}")
+            print(f"{'Pitch Rate:':<15} {residual[2]:<15.2f}{'rad/s':<10}")
+            print(f"{'Inertial Acc X:':<15} {residual[3]:<15.2f}{'m/s':<10}")
+            print(f"{'Inertial Acc Z:':<15} {residual[4]:<15.2f}{'m/s':<10}")
+            print(f"{'Pitch Acc:':<15} {residual[5]:<15.2f}{'rad/s':<10}")
+            print(f"Residual Norm: {result.cost:.6f}")
+
+            if result.success :
                 print("Optimization successful!")
             else:
                 print("Optimization failed:", result.message)
 
+        ## Save equilibrium state
+        # Set parameters for the system
+        theta = result.x[0]
+        self.towingForce.delta_t = result.x[1]
+        self.towingForce.magnitude = result.x[2]
+        self.controlForces[0].delta_i = result.x[3]
 
-            return result
-    
-    def solve_equilibrium_state_min_FT(self, initial_velocity):
-        #Solve for X-Dot = 0
+        # Get Boy frame velocities
+        T = self.transformation_matrix(theta)
+        bf_velocities = T.T @ np.array([initial_velocity, 0])  # Body-frame velocities
+        theta_dot = 0
+        inertial_position = [0,0]
+        inertial_velocity = [initial_velocity, 0]
+        inertial_acceleration = [0,0]
+        alpha_body = 0
+        bf_accelerations = [0,0]
 
-        #Define objective function
-        def objective_function_1(args):
-            pitch_angle, delta_t, towing_force, delta_i = args
-            #Override variables being optimized
-            self.towingForce.delta_t = delta_t
-            self.towingForce.magnitude = towing_force
-            self.controlForces[0].delta_i = delta_i
-
-            #Initialize system
-            initial_state = np.array([0, 0, pitch_angle, initial_velocity, 0, 0, 0, 0, 0])
-            self.initialize_system(initial_state)
-
-            #Solve forces
-            self.solve_forces(0)
-
-            #Calculate sum of forces/moments
-            total_force_x,total_force_z = self.rigidbody.sum_forces(pitch_angle) 
-            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
-
-            #Set objective
-            objective = np.sqrt(total_force_x**2 + total_force_z**2 + total_moment_y**2)
-            return objective
-
-        #Define objective function
-        def objective_function_2(args):
-            pitch_angle, delta_t, towing_force, delta_i = args
-            return towing_force
+        # Calculate sum of forces/moments
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i \
+                = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)    
         
-        # Set constraints
-        def constraint_function_force_x(args):
-            pitch_angle, delta_t, towing_force, delta_i = args
-            self.towingForce.delta_t = delta_t
-            self.towingForce.magnitude = towing_force
-            self.controlForces[0].delta_i = delta_i
-            self.solve_forces(0)
-            total_force_x, _ = self.rigidbody.sum_forces(pitch_angle)
-            return total_force_x
-
-        def constraint_function_force_z(args):
-            pitch_angle, delta_t, towing_force, delta_i = args
-            self.towingForce.delta_t = delta_t
-            self.towingForce.magnitude = towing_force
-            self.controlForces[0].delta_i = delta_i
-            self.solve_forces(0)
-            _, total_force_z = self.rigidbody.sum_forces(pitch_angle)
-            return total_force_z
-
-        def constraint_function_moment_y(args):
-            pitch_angle, delta_t, towing_force, delta_i = args
-            self.towingForce.delta_t = delta_t
-            self.towingForce.magnitude = towing_force
-            self.controlForces[0].delta_i = delta_i
-            self.solve_forces(0)
-            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
-            return total_moment_y
-
-        cons = (
-            {'type': 'eq', 'fun': constraint_function_force_x},
-            {'type': 'eq', 'fun': constraint_function_force_z},
-            {'type': 'eq', 'fun': constraint_function_moment_y}
-        )
-
-        x0 = (np.deg2rad(-5), np.deg2rad(40), 5, np.deg2rad(-5))
-
-        result = opti.minimize(objective_function_2, x0, bounds=self.bounds, constraints=cons, method='SLSQP', options={'ftol': 1e-10, 'disp': True, 'maxiter':10000})
-
-       
-        print("Optimization Results:")
-        print("----------------------")
-        print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
-        print("----------------------")
-        print(f"{'Pitch Angle':<15} {np.rad2deg(result.x[0]):<15.2f} {'degrees':<10}")
-        print(f"{'Delta_t':<15} {np.rad2deg(result.x[1]):<15.2f} {'degrees':<10}")
-        print(f"{'Towing Force':<15} {result.x[2]:<15.2f} {'N':<10}")
-        print(f"{'Delta_i':<15} {np.rad2deg(result.x[3]):<15.2f} {'degrees':<10}")
-        print("----------------------")
-        print(f"{'Fx constraint':<15} {constraint_function_force_x(result.x):<15.2f} {'N':<10}")
-        print(f"{'Fz constraint':<15} {constraint_function_force_z(result.x):<15.2f} {'N':<10}")
-        print(f"{'My constraint':<15} {constraint_function_moment_y(result.x):<15.2f} {'Nm':<10}")    
-
-        if result.success:
-            print(f"Objective Function Value: {result.fun}")
-            print("Optimization successful!")
-        else:
-            print("Optimization failed:", result.message)
-
-        return result
-
-    # Solve for equilibrium state given a fixed delta_i
-    def solve_equilibrium_state_fsolve_fixed_delta_i(self, initial_velocity, delta_i):
-        # Initialize system
-
-        initial_state = np.array([0, 0, 0, initial_velocity, 0, 0, 0, 0, 0])
-        self.initialize_system(initial_state)
-        self.controlForces[0].delta_i = np.deg2rad(delta_i)
-
-
-        # Define the system of equations
-        def equations(args):
-            pitch_angle, delta_t, towing_force = args
-            
-            # Override variables being optimized
-            self.towingForce.delta_t = delta_t
-            self.towingForce.magnitude = towing_force
-            
-            # Solve forces
-            self.solve_forces(0)
-
-            # Calculate sum of forces/moments
-            total_force_x, total_force_z = self.rigidbody.sum_forces(pitch_angle) 
-            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
-
-            # Return the equations that should equal zero
-            return [total_force_x, total_force_z, total_moment_y]
-
-        # Set initial guess
-        x0 = (np.deg2rad(-5), np.deg2rad(40), 5)  # Initial guesses for [pitch_angle, delta_t, towing_force]
-
-        # Use fsolve to solve the equations
-        result = opti.fsolve(equations, x0)
-        root = equations(result)
-
-        print("Optimization Results:")
-        print("----------------------")
-        print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
-        print("----------------------")
-        print(f"{'Pitch Angle':<15} {np.rad2deg(result[0]):<15.2f} {'degrees':<10}")
-        print(f"{'Delta_t':<15} {np.rad2deg(result[1]):<15.2f} {'degrees':<10}")
-        print(f"{'Towing Force':<15} {result[2]:<15.2f} {'N':<10}")
-        print("----------------------")
-        print(f"{'Total Force X':<15} {root[0]:<15.2f} {'N':<10}")
-        print(f"{'Total Force Z':<15} {root[1]:<15.2f} {'N':<10}")
-        print(f"{'Total Moment Y':<15} {root[2]:<15.2f} {'Nm':<10}")
-        print("Optimization successful!")
-      
-        return result
-
-    # Solve for equilibrium state given a fixed pitch angle
-    def solve_equilibrium_state_fsolve_fixed_pitch(self, pitch_angle, initial_velocity):
-        # Initialize system
-        pitch_angle = np.deg2rad(pitch_angle)
-        initial_state = np.array([0, 0, pitch_angle, initial_velocity, 0, 0, 0, 0, 0])
-        self.initialize_system(initial_state)
-
-        # Define the system of equations
-        def equations(args):
-            delta_i, delta_t, towing_force = args
-            
-            # Override variables being optimized
-            self.controlForces[0].delta_i = delta_i
-            self.towingForce.delta_t = delta_t
-            self.towingForce.magnitude = towing_force
-            
-            # Solve forces
-            self.solve_forces(0)
-
-            # Calculate sum of forces/moments
-            total_force_x, total_force_z = self.rigidbody.sum_forces(pitch_angle) 
-            total_moment_y = self.rigidbody.sum_moments(pitch_angle)
-
-            # Return the equations that should equal zero
-            return [total_force_x, total_force_z, total_moment_y]
-
-        # Set initial guess
-        x0 = (np.deg2rad(-5), np.deg2rad(30), 2)  # Initial guesses for [pitch_angle, delta_t, towing_force, delta_i]
-
-        # Use fsolve to solve the equations
-        result = opti.fsolve(equations, x0)
-
-        root = equations(result)
-
-        print("Optimization Results:")
-        print("----------------------")
-        print(f"{'Parameter':<15} {'Value':<15} {'Units':<10}")
-        print("----------------------")
-        print(f"{'Delta_i':<15} {np.rad2deg(result[0]):<15.2f} {'degrees':<10}")
-        print(f"{'Delta_t':<15} {np.rad2deg(result[1]):<15.2f} {'degrees':<10}")
-        print(f"{'Towing Force':<15} {result[2]:<15.2f} {'N':<10}")
-        print("----------------------")
-        print(f"{'Total Force X':<15} {root[0]:<15.2f} {'N':<10}")
-        print(f"{'Total Force Z':<15} {root[1]:<15.2f} {'N':<10}")
-        print(f"{'Total Moment Y':<15} {root[2]:<15.2f} {'Nm':<10}")
-        print("Optimization successful!")
-      
-
+        _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
+                _, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z \
+                    = self.rigidbody.sum_forces(theta)
         
-        return result
+        _, buoyancy_moment, tow_force_moment, control_force_moment, hull_force_moment \
+            = self.rigidbody.sum_moments(theta)  # Pitch moment
+
+        # Save equilibrium results
+        self.eq_sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
+                                control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
+                                hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
+                                buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
+                                theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
+        
+        return result.x
