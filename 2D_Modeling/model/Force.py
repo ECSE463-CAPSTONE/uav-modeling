@@ -113,7 +113,16 @@ class HullForce():
 
 
 class TowingForce():
-    def __init__(self, location, magnitude, delta_t):
+    def __init__(self, location, magnitude, drone_height, drone_tow_length, probe_depth):
         self.magnitude = magnitude
-        self.delta_t = delta_t
+        self.drone_height = drone_height
+        self.drone_tow_length = drone_tow_length
+        self.probe_depth = probe_depth
         self.location = location
+        self.delta_t = 0
+    
+    def calculate_force(self, x, z):
+        delta_t = (self.drone_height + self.probe_depth + z) / self.drone_tow_length
+        self.delta_t = delta_t
+
+        return delta_t

@@ -30,6 +30,7 @@ class Simulation_Result():
         self.bf_acceleration = []      # 2D array for body-frame acceleration
 
         #Tow
+        self.tow_force_delta_t = []
         self.tow_force_body = [] # 1D array for body-frame x force of different control forces
         self.tow_force_moment = []          # 1D array for moment
 
@@ -60,13 +61,14 @@ class Simulation_Result():
         self.N = N 
         self.time = []
     
-    def save_simulation_results(self, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
+    def save_simulation_results(self, delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
                                 control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
                                 hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                 buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
                                 theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body):
         
         #Tow
+        self.tow_force_delta_t.append(delta_t)
         self.tow_force_body.append([tow_force_x,tow_force_z])
         self.tow_force_moment.append(tow_force_moment)          # 1D array for moment
 
@@ -160,7 +162,7 @@ class Simulation():
         self.sim.bf_velocity[0] = T.T @ self.sim.inertial_velocity[0]
         self.sim.bf_acceleration[0] = T.T @ self.sim.inertial_acceleration[0]
           
-    def solve_forces(self, u, w, q):
+    def solve_forces(self, x, z, u, w, q):
         # Extract velocity states
         velocity_states = [u, w, q]
         
@@ -168,6 +170,9 @@ class Simulation():
         V, lift, drag = self.hullForce.calculate_force(velocity_states)
         hull_force_magnitude = np.array([drag, lift])
         hull_flow_velocity = V
+
+        # Solve Tow angle
+        delta_t = self.towingForce.calculate_force(x,z)
 
         ## Find control forces
         control_force_C_D = []
@@ -187,7 +192,7 @@ class Simulation():
             control_force_magnitude.append([drag, lift])
             control_force_alpha_i.append(alpha_i)
         
-        return hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i
+        return hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t
 
 
     ##################################################################################################
@@ -257,8 +262,8 @@ class Simulation():
         bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities
 
         # 2. Solve for forces using the body-frame velocities
-        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i = \
-            self.solve_forces(bf_velocities[0], bf_velocities[1], theta_dot)
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t = \
+            self.solve_forces(x, z, bf_velocities[0], bf_velocities[1], theta_dot)
 
         # 3. Get total forces and moments
         total_force_x, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
@@ -298,7 +303,7 @@ class Simulation():
 
         ## Append results
         if save_sim:
-            self.sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
+            self.sim.save_simulation_results(delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
                                     control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
                                     hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                     buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
@@ -315,27 +320,7 @@ class Simulation():
             inertial_acceleration[1],  # z_ddot in inertial frame
             alpha_body                 # theta_ddot (angular acceleration)
         ]
-    
-    def simulate_solve_ivp(self, N, dt, initial_state):
-        """Simulates the system using solve_ivp."""
-        self.sim = Simulation_Result(dt, N)
-
-        # Define the time span and evaluation points
-        t_span = (0, N * dt)
-        t_eval = np.linspace(0, N * dt, N + 1)
-        y0 = initial_state[:6]
-
-        # Call solve_ivp to solve the dynamics
-        solution = solve_ivp(
-            fun=self.system_dynamics,
-            t_span=t_span,
-            y0=y0,
-            t_eval=t_eval,
-            method='RK45'
-        )
-
-        return self.sim, solution
-    
+        
     ##################################################################################################
     ######################################## CALCULATE JACOBIAN ######################################
     ##################################################################################################
@@ -381,6 +366,7 @@ class Simulation():
 
             # Set parameters for the system
             self.towingForce.delta_t = delta_t
+            self.towingForce.probe_depth = delta_t * self.towingForce.drone_tow_length - self.towingForce.drone_height
             self.towingForce.magnitude = towing_force
             self.controlForces[0].delta_i = delta_i
             
@@ -451,7 +437,7 @@ class Simulation():
         bf_accelerations = [0,0]
 
         # Calculate sum of forces/moments
-        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i \
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t \
               = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)    
         
         _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
@@ -462,7 +448,7 @@ class Simulation():
             = self.rigidbody.sum_moments(theta)  # Pitch moment
 
         # Save equilibrium results
-        self.eq_sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
+        self.eq_sim.save_simulation_results(delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
                                 control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
                                 hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                 buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
@@ -479,7 +465,9 @@ class Simulation():
             pitch_angle, delta_t, towing_force, delta_i = args
 
             # Set parameters for the system
+            # Set parameters for the system
             self.towingForce.delta_t = delta_t
+            self.towingForce.probe_depth = delta_t * self.towingForce.drone_tow_length - self.towingForce.drone_height
             self.towingForce.magnitude = towing_force
             self.controlForces[0].delta_i = delta_i
 
@@ -547,8 +535,8 @@ class Simulation():
         bf_accelerations = [0,0]
 
         # Calculate sum of forces/moments
-        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i \
-                = self.solve_forces(bf_velocities[0], bf_velocities[1], 0)    
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t \
+                = self.solve_forces(0, 0, bf_velocities[0], bf_velocities[1], 0)    
         
         _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
                 _, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z \
@@ -558,7 +546,7 @@ class Simulation():
             = self.rigidbody.sum_moments(theta)  # Pitch moment
 
         # Save equilibrium results
-        self.eq_sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
+        self.eq_sim.save_simulation_results(delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
                                 control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
                                 hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                 buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
