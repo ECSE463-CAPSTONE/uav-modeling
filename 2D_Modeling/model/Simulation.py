@@ -204,6 +204,7 @@ class Simulation():
         self.sim.time = [0]
         t = 0
         self.sim.i = 1 #start from second iteration
+        self.sim.dt = dt
         for i in range(1, N):
             #Extract previous time step values
             x = self.sim.inertial_position[i-1][0]
@@ -213,18 +214,19 @@ class Simulation():
             z_dot = self.sim.inertial_velocity[i-1][1]
             theta_dot = self.sim.pitch_rate[i-1]
 
+            #Pack state vector
             X = x, z, theta, x_dot, z_dot, theta_dot
 
             t = t + dt
             self.system_dynamics(t,X)
             
             #Overwrite previous time step values with new values
-            self.sim.pitch_rate[i] += self.sim.angular_acceleration[i] * dt
-            self.sim.pitch_angle[i] += self.sim.pitch_rate[i] * dt
-            self.sim.inertial_velocity[i][0] += self.sim.inertial_acceleration[i][0]*dt
-            self.sim.inertial_velocity[i][1] += self.sim.inertial_acceleration[i][1]*dt
-            self.sim.inertial_position[i][0] += self.sim.inertial_velocity[i][0]*dt
-            self.sim.inertial_position[i][1] += self.sim.inertial_velocity[i][1]*dt
+     #       self.sim.pitch_rate[i] += self.sim.angular_acceleration[i] * dt
+      #      self.sim.pitch_angle[i] += self.sim.pitch_rate[i] * dt
+       #     self.sim.inertial_velocity[i][0] += self.sim.inertial_acceleration[i][0]*dt
+        #    self.sim.inertial_velocity[i][1] += self.sim.inertial_acceleration[i][1]*dt
+         #   self.sim.inertial_position[i][0] += self.sim.inertial_velocity[i][0]*dt
+          #  self.sim.inertial_position[i][1] += self.sim.inertial_velocity[i][1]*dt
 
         return self.sim
     
@@ -242,7 +244,7 @@ class Simulation():
     def system_dynamics(self, t, y):
         """ODE function for solve_ivp. Calculates derivatives at each timestep."""
         #0. Unpack the state vector y = [x, z, theta, x_dot, z_dot, theta_dot]
-        x, z, theta, x_dot, z_dot, theta_dot = y
+        x, z, theta, x_dot, z_dot, theta_dot = y #Inertial Frame
 
         # 1. Calculate body-frame velocities (bf_velocities)
         T = self.transformation_matrix(theta)
@@ -257,7 +259,13 @@ class Simulation():
                 total_force_z, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z = self.rigidbody.sum_forces(theta)  # [Fx, Fz] in body frame
         total_moment, buoyancy_moment, tow_force_moment, control_force_moment, hull_force_moment = self.rigidbody.sum_moments(theta)  # Pitch moment
 
-        # 4. Calculate body-frame accelerations (q_dot_dot)
+
+        # 4. Calculate angular acceleration (alpha_body)
+        alpha_body = total_moment/ self.rigidbody.Iyy 
+        theta_dot += alpha_body * self.sim.dt
+        theta += theta_dot * self.sim.dt
+ 
+        # 5. Calculate body-frame accelerations (q_dot_dot)
         ax_body = (
             total_force_x / self.rigidbody.mass 
             + theta_dot * bf_velocities[1]
@@ -267,10 +275,6 @@ class Simulation():
             - theta_dot * bf_velocities[0]
         )
         bf_accelerations = np.array([ax_body, az_body])
-
-        # 5. Calculate angular acceleration (alpha_body)
-        c = 0  #possibly damping?????
-        alpha_body = (total_moment - c * theta_dot)/ self.rigidbody.Iyy 
 
         # 6. Transform body accelerations to the inertial frame using T_full
         T_dot = self.transformation_matrix_dot(theta, theta_dot)
@@ -283,8 +287,8 @@ class Simulation():
         body_acc_vector = np.hstack((bf_velocities, bf_accelerations))
         inertial_acc_vector = T_full @ body_acc_vector
         inertial_acceleration = [inertial_acc_vector[2],inertial_acc_vector[3]]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
-        inertial_position = [x, z]           #as given by solver
-        inertial_velocity = [x_dot, z_dot] #as given by solver
+        inertial_velocity = [x_dot + inertial_acceleration[0] * self.sim.dt, z_dot + inertial_acceleration[1] * self.sim.dt] #as given by solver
+        inertial_position = [x + inertial_velocity[0] * self.sim.dt, z + inertial_velocity[1] * self.sim.dt]           #as given by solver
 
         ## Append results      
         self.sim.save_simulation_results(tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
@@ -398,7 +402,7 @@ class Simulation():
         x0 = np.array([self.lb_pitch_angle, np.deg2rad(40), 5, np.deg2rad(-5)])
 
         # Perform least squares optimization
-        result = least_squares(residuals, x0, bounds = bounds, max_nfev=10000)
+        result = least_squares(residuals, x0, bounds = bounds, max_nfev=100000)
         residual = residuals(result.x)
 
         # Print Results
