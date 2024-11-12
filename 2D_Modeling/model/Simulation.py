@@ -391,7 +391,8 @@ class Simulation():
         )
 
         # Initial guess
-        x0 = np.array([self.lb_pitch_angle, np.deg2rad(40), 5, self.lb_delta_i])
+        x0 = np.array([self.lb_pitch_angle, np.deg2rad(40), 5, np.deg2rad(-5)])
+        # x0 = np.array([self.lb_pitch_angle, np.deg2rad(40), 5, self.lb_delta_i])
 
         # Perform least squares optimization
         result = least_squares(residuals, x0, bounds = bounds, max_nfev=100000)
