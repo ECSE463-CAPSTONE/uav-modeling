@@ -47,11 +47,6 @@ class ControlForce():
         u, w, q = velocity_states
 
         alpha_i = self.calculate_alpha_i(velocity_states)
-        if alpha_i >= np.deg2rad(15):
-            print("alpha_i is bigger than 15degrees")
-
-        elif alpha_i <= np.deg2rad(-15):
-            print("alpha_i is smaller than -15degrees")
 
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
