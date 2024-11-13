@@ -231,14 +231,6 @@ class Simulation():
             t = t + dt
             self.system_dynamics(t,X,True)
             
-            #Overwrite previous time step values with new values
-     #       self.sim.pitch_rate[i] += self.sim.angular_acceleration[i] * dt
-      #      self.sim.pitch_angle[i] += self.sim.pitch_rate[i] * dt
-       #     self.sim.inertial_velocity[i][0] += self.sim.inertial_acceleration[i][0]*dt
-        #    self.sim.inertial_velocity[i][1] += self.sim.inertial_acceleration[i][1]*dt
-         #   self.sim.inertial_position[i][0] += self.sim.inertial_velocity[i][0]*dt
-          #  self.sim.inertial_position[i][1] += self.sim.inertial_velocity[i][1]*dt
-
         return self.sim
     
     ##################################################################################################
@@ -282,7 +274,7 @@ class Simulation():
         bf_accelerations = np.array([ax_body, az_body])
 
         # 4. Calculate angular acceleration (alpha_body)
-        alpha_body = total_moment/ self.rigidbody.Iyy 
+        alpha_body = total_moment / self.rigidbody.Iyy 
         theta_dot += alpha_body * self.sim.dt
         theta += theta_dot * self.sim.dt
 
@@ -312,8 +304,8 @@ class Simulation():
 
         # 7. Return derivatives [x_dot, z_dot, theta_dot, x_ddot, z_ddot, theta_ddot]
         return [
-            x_dot,
-            z_dot,
+            inertial_velocity[0],
+            inertial_velocity[1],
             theta_dot,
             inertial_acceleration[0],  # x_ddot in inertial frame
             inertial_acceleration[1],  # z_ddot in inertial frame
@@ -326,7 +318,7 @@ class Simulation():
 
     def calculate_jacobian(self, v, pitch_angle, epsilon):
         # Initialize system
-        if not not self.sim: #Temporary save of sim results if they exist
+        if self.sim: #Temporary save of sim results if they exist
             temp_save = self.sim
 
         self.sim = Simulation_Result(dt = 1, N = 2)
@@ -437,7 +429,7 @@ class Simulation():
 
         # Calculate sum of forces/moments
         hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t \
-              = self.solve_forces(0, 0, bf_velocities[0], bf_velocities[1], 0)    
+              = self.solve_forces(0, 0, bf_velocities[0], bf_velocities[1], theta_dot)    
         
         _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
                 _, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z \
@@ -522,14 +514,14 @@ class Simulation():
         self.towingForce.magnitude = result.x[2]
         self.controlForces[0].delta_i = result.x[3]
 
-        # Get Boy frame velocities
+        # Get Body frame velocities
         T = self.transformation_matrix(theta)
-        bf_velocities = T.T @ np.array([initial_velocity, 0])  # Body-frame velocities
-        theta_dot = 0
+        theta_dot = residual[2]
         inertial_position = [0,0]
-        inertial_velocity = [initial_velocity, 0]
-        inertial_acceleration = [0,0]
-        alpha_body = 0
+        inertial_velocity = [initial_velocity + residual[0], residual[1]]
+        inertial_acceleration = [residual[3], residual[4]]
+        alpha_body = residual[5]
+        bf_velocities = T.T @ np.array(inertial_velocity)  # Body-frame velocities
         bf_accelerations = [0,0]
 
         # Calculate sum of forces/moments

@@ -3,20 +3,68 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from tabulate import tabulate
+from matplotlib.animation import FuncAnimation
+
 
 
 class PlotManager():
     def __init__(self):
         ()
 
-    def plotfbd(self, sim:object, sim_result:object):
-    # Define the rotation angle in radians
-        theta = -sim_result.pitch_angle[0] # Rotate by pitch (adjust as needed)
-    
-        #Hard coding i = 0 for equilibrium purposes only
-        i = 0
+    def plotfbd(self, sim:object, sim_result:object, fig=[], ax=[], i=0):
 
-        # Rotation matrix
+        rotated_corners, transformed_forces = self.calc_vectors(sim, sim_result, i)
+        
+        # Calculate limits based on rotated forces and rectangle
+        padding = 0.05
+        x_min = min(point[0] + vector[0] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) - padding
+        x_max = max(point[0] + vector[0] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) + padding
+        y_min = min(point[1] + vector[1] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) - padding
+        y_max = max(point[1] + vector[1] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) + padding
+
+        # Set up plot
+        if fig == []:
+            fig, ax = plt.subplots(figsize=(10, 10))
+            ax.set_aspect('equal')
+
+            # Set axis limits
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+
+        cmap = plt.cm.viridis
+        colors = cmap(np.linspace(0,1,len(transformed_forces)))
+        # Plot transformed forces
+        for i, force in enumerate(transformed_forces):
+            point = force["point"]
+            vector = force["vector"]
+            label = force["label"]
+            ax.quiver(point[0], point[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color = colors[i], label = label)
+            ax.plot([0,point[0]], [0,point[1]],'.-')
+
+        # Plot the rotated rectangle
+        rotated_x = [corner[0] for corner in rotated_corners]
+        rotated_y = [corner[1] for corner in rotated_corners]
+        ax.plot(rotated_x, rotated_y, 'g-')  # Green rectangle outline
+
+        # Flip the appearance of the axes without changing vector directions
+        ax.invert_xaxis()  # Flip x-axis appearance
+        ax.invert_yaxis()  # Flip y-axis appearance
+
+        # Optional: Add grid, labels, and title
+        if i == 0:
+            plt.grid(True)
+            plt.legend()
+            plt.xlabel('X-axis')
+            plt.ylabel('Y-axis')
+            plt.title('Free Body Diagram with Rotated Forces and Rectangle')
+            plt.show()
+            
+        return fig, ax
+
+    def calc_vectors(self, sim, sim_result , i):
+                # Define the rotation angle in radians
+        theta = -sim_result.pitch_angle[i] # Rotate by pitch (adjust as needed)
+            # Rotation matrix
         rotation_matrix = np.array([
             [np.cos(theta), -np.sin(theta)],
             [np.sin(theta),  np.cos(theta)]
@@ -79,50 +127,24 @@ class PlotManager():
         rotated_corners = [np.dot(rotation_matrix, corner) for corner in corners]
         rotated_corners.append(rotated_corners[0])  # Close the rectangle by repeating the first point
 
-        # Calculate limits based on rotated forces and rectangle
-        padding = 0.05
-        x_min = min(point[0] + vector[0] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) - padding
-        x_max = max(point[0] + vector[0] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) + padding
-        y_min = min(point[1] + vector[1] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) - padding
-        y_max = max(point[1] + vector[1] for force in transformed_forces for point, vector in zip([force['point']], [force['vector']])) + padding
+        return rotated_corners, transformed_forces
 
-        # Set up plot
-        fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_aspect('equal')
+    def gen_gif(self, sim:object, sim_result:object):
+        fig, ax = self.plotfbd(sim, sim_result)        # Set the axis limits
 
-        # Set axis limits
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
+        # Function to update the line for the animation
+        def update(frame):
+            self.plotfbd(sim, sim_result, fig, ax, frame)  # Update the sine wave
+            return fig, ax
 
-        cmap = plt.cm.viridis
-        colors = cmap(np.linspace(0,1,len(forces)))
-        # Plot transformed forces
-        for i, force in enumerate(transformed_forces):
-            point = force["point"]
-            vector = force["vector"]
-            label = force["label"]
-            ax.quiver(point[0], point[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color = colors[i], label = label)
-            ax.plot([0,point[0]], [0,point[1]],'.-')
+        # Create the animation
+        ani = FuncAnimation(fig, update, frames=100, interval=50, blit=True)
 
-        # Plot the rotated rectangle
-        rotated_x = [corner[0] for corner in rotated_corners]
-        rotated_y = [corner[1] for corner in rotated_corners]
-        ax.plot(rotated_x, rotated_y, 'g-')  # Green rectangle outline
+        # Save the animation as a GIF
+        ani.save('sine_wave_animation.gif', writer='pillow')
 
-        # Flip the appearance of the axes without changing vector directions
-        ax.invert_xaxis()  # Flip x-axis appearance
-        ax.invert_yaxis()  # Flip y-axis appearance
-
-        # Optional: Add grid, labels, and title
-        plt.grid(True)
-        plt.legend()
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-        plt.title('Free Body Diagram with Rotated Forces and Rectangle')
-
-        plt.show()
-
-
+        return 
+    
     def plot_all_results(self, sim_result:object):
         
         sim_temp = sim_result
@@ -141,7 +163,6 @@ class PlotManager():
             fig.delaxes(axs[ax])
         #fig.tight_layout()
         plt.show()
-
 
     def plot_simulation_results(self,sim_result:object):
         """Plots inertial and pitch states, as well as force magnitudes and moments."""
