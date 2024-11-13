@@ -199,12 +199,12 @@ class Simulation():
     ######################################## FORWARD EULER ###########################################
     ##################################################################################################
     
-    def simulate_forward_euler(self, N, dt, initial_state, state_pertubation = [0,0,0,0,0,0]):
+    def simulate_forward_euler(self, N, dt, Velocity, state_pertubation = [0,0,0,0,0,0]):
         #  Initialize the simulation results
         self.sim = Simulation_Result(dt, N)
 
         #Solve first iteration
-        res = self.solve_equilibrium_state_LS_Vel(initial_state[3])
+        res = self.solve_equilibrium_state_LS_Vel(Velocity)
         self.sim = self.eq_sim
         self.sim.time = [0]
         t = 0
@@ -251,7 +251,7 @@ class Simulation():
 
         # 1. Calculate body-frame velocities (bf_velocities)
         T = self.transformation_matrix(theta)
-        bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities
+        bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities using inverse of T
 
         # 2. Solve for forces using the body-frame velocities
         hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t = \
@@ -262,21 +262,48 @@ class Simulation():
                 total_force_z, mass_force_z, buoyancy_force_z, tow_force_z, control_force_z, hull_force_z = self.rigidbody.sum_forces(theta)  # [Fx, Fz] in body frame
         total_moment, buoyancy_moment, tow_force_moment, control_force_moment, hull_force_moment = self.rigidbody.sum_moments(theta)  # Pitch moment
  
-        # 5. Calculate body-frame accelerations (q_dot_dot)
-        ax_body = (
-            total_force_x / self.rigidbody.mass 
-            + theta_dot * bf_velocities[1]
-        )
-        az_body = (
-            total_force_z / self.rigidbody.mass 
-            - theta_dot * bf_velocities[0]
-        )
-        bf_accelerations = np.array([ax_body, az_body])
-
         # 4. Calculate angular acceleration (alpha_body)
         alpha_body = total_moment / self.rigidbody.Iyy 
         theta_dot += alpha_body * self.sim.dt
         theta += theta_dot * self.sim.dt
+
+        # 5. Solve for body frame accelerations
+        # ax_body + alpha_body * (bf_velocities[1] + az_body *dt) = total_force_x / self.rigidbody.mass
+        # az_body - alpha_body * (bf_velocities[0] + ax_body *dt) = total_force_z / self.rigidbody.mass
+
+        # Right-hand side constants
+        B = np.array([
+            total_force_x / self.rigidbody.mass - theta_dot * bf_velocities[1],
+            total_force_z / self.rigidbody.mass + theta_dot * bf_velocities[0]
+        ])
+
+        # Coefficient matrix
+        A = np.array([
+            [1, theta_dot * self.sim.dt],
+            [-theta_dot * self.sim.dt, 1]
+        ])
+
+        # Solve for ax_body and az_body
+        bf_accelerations = np.linalg.solve(A, B)
+
+        # 6. Find body frame velocities and displacements
+        bf_velocities[0] +=  bf_accelerations[0] * self.sim.dt
+        bf_velocities[1] +=  bf_accelerations[1] * self.sim.dt
+        #bf_positions[0] +=  bf_velocities[0] * self.sim.dt probably not needed?
+        #bf_positions[1] +=  bf_velocities[1] * self.sim.dt
+        
+        ####################################
+        # # 5. Calculate body-frame accelerations (q_dot_dot)
+        # ax_body = (
+        #     total_force_x / self.rigidbody.mass 
+        #     + theta_dot * bf_velocities[1]
+        # )
+        # az_body = (
+        #     total_force_z / self.rigidbody.mass 
+        #     - theta_dot * bf_velocities[0]
+        # )
+        # bf_accelerations = np.array([ax_body, az_body])
+        ############################
 
         # 6. Transform body accelerations to the inertial frame using T_full
         T_dot = self.transformation_matrix_dot(theta, theta_dot)
@@ -287,10 +314,13 @@ class Simulation():
 
         # Combine accelerations and velocities into vectors for transformation
         body_acc_vector = np.hstack((bf_velocities, bf_accelerations))
-        inertial_acc_vector = T_full @ body_acc_vector
-        inertial_acceleration = [inertial_acc_vector[2],inertial_acc_vector[3]]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
+        inertial_vector = T_full @ body_acc_vector
+        inertial_acceleration = [inertial_vector[2],inertial_vector[3]]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
+        inertial_velocity_xxx = [inertial_vector[0],inertial_vector[1]]
         inertial_velocity = [x_dot + inertial_acceleration[0] * self.sim.dt, z_dot + inertial_acceleration[1] * self.sim.dt] #as given by solver
         inertial_position = [x + inertial_velocity[0] * self.sim.dt, z + inertial_velocity[1] * self.sim.dt]           #as given by solver
+        
+
 
         ## Append results
         if save_sim:

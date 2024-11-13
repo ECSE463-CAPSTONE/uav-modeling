@@ -90,10 +90,10 @@ class RigidBody:
                                         for f in self.control_forces])
 
         #Hull Force Moment
-        hull_force_moment = self.hull_force.magnitude[0] *(self.hull_force.location[0] * np.sin(theta) \
-                                                           -self.hull_force.location[1] * np.cos(theta)) \
-                            +self.hull_force.magnitude[1] *(self.hull_force.location[0] * np.cos(theta) \
-                                                           -self.hull_force.location[1] * np.sin(theta))
+        hull_force_moment = self.hull_force.magnitude[0] *(self.hull_force.location[0] * np.sin(self.hull_force.alpha_h) \
+                                                           -self.hull_force.location[1] * np.cos(self.hull_force.alpha_h)) \
+                            +self.hull_force.magnitude[1] *(self.hull_force.location[0] * np.cos(self.hull_force.alpha_h) \
+                                                           -self.hull_force.location[1] * np.sin(self.hull_force.alpha_h))
         
         #Sum
         total_moment_y = buoyancy_moment + tow_force_moment + control_force_moment + hull_force_moment
