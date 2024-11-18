@@ -366,7 +366,7 @@ class Simulation():
             #print('pstate '+ str(perturbed_state))
             #print('xdot pertu '+ str(xdot_ie))
 
-        return jacobian
+        return jacobian, X
 
     ##################################################################################################
     ######################################## EQUILIBRIUM STATE ########################################
