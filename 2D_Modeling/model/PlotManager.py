@@ -34,11 +34,11 @@ class PlotManager():
         cmap = plt.cm.viridis
         colors = cmap(np.linspace(0,1,len(transformed_forces)))
         # Plot transformed forces
-        for i, force in enumerate(transformed_forces):
+        for k, force in enumerate(transformed_forces):
             point = force["point"]
             vector = force["vector"]
             label = force["label"]
-            ax.quiver(point[0], point[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color = colors[i], label = label)
+            ax.quiver(point[0], point[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color = colors[k], label = label)
             ax.plot([0,point[0]], [0,point[1]],'.-')
 
         # Plot the rotated rectangle
@@ -86,7 +86,8 @@ class PlotManager():
             {"point": (r_xh, r_zh), "vector": (sim_result.hull_force_body[i][0], sim_result.hull_force_body[i][1]), "label": ("Hull-Force = " + str(round((sim_result.hull_force_body[i][0]**2 + sim_result.hull_force_body[i][1] **2)**(0.5),1)) + "N")}, # Hull drag
             {"point": (r_xt, r_zt), "vector": (sim_result.tow_force_body[i][0], sim_result.tow_force_body[i][1]), "label": ("Tow-Force = " + str(round((sim_result.tow_force_body[i][0]**2 + sim_result.tow_force_body[i][1] **2)**(0.5),1)) + "N")},   # Tow force
             {"point": (r_xb, r_zb), "vector": (sim_result.buoyancy_force_body[i][0], sim_result.buoyancy_force_body[i][1]), "label": ("Buoyancy-Force = " + str(round((sim_result.buoyancy_force_body[i][0]**2 + sim_result.buoyancy_force_body[i][1] **2)**(0.5),1)) + "N")}, # Buoyancy
-            {"point": (0, 0), "vector": (sim_result.mass_force_body[i][0], sim_result.mass_force_body[i][1]), "label": ("Mass-Force = " + str(round((sim_result.mass_force_body[i][0]**2 + sim_result.mass_force_body[i][1] **2)**(0.5),1)) + "N")}       # Weight
+            {"point": (0, 0), "vector": (sim_result.mass_force_body[i][0], sim_result.mass_force_body[i][1]), "label": ("Mass-Force = " + str(round((sim_result.mass_force_body[i][0]**2 + sim_result.mass_force_body[i][1] **2)**(0.5),1)) + "N")},       # Weight
+            {"point": (r_xi, r_zi), "vector": (sim_result.control_flow_velocity[i][0] * 10 * np.cos(sim_result.control_force_alpha_i[i][0]), sim_result.control_flow_velocity[i][0]* 10 * np.sin(sim_result.control_force_alpha_i[i][0])), "label": ("Control Flow")}
         ]
 
         # Determine the maximum length of the vectors

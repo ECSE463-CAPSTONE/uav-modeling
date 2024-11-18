@@ -37,7 +37,7 @@ class ControlForce():
         Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  *  AoA # Lift coefficient, eq. 19
         Cd_form = Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
         Cd_skin = 0.0576/(Re**(1/5))
-        return Cl, Cd_form, Cd_skin
+        return Cl, Cd_form, Cd_skin, AoA
 
    
     # CALCULATES WITH RESPECT TO V NOT IN BODY FRAME
@@ -51,7 +51,7 @@ class ControlForce():
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
         Re = rho * V * self.chord / mu
-        Cl, Cd_form, Cd_skin = self.calculate_cl_cd(alpha_i, Re)
+        Cl, Cd_form, Cd_skin, AoA = self.calculate_cl_cd(alpha_i, Re)
 
         lift = 0.5 * rho * Cl * self.Area * V ** 2
         drag_form = 0.5 * rho * Cd_form * self.Area * V ** 2
@@ -61,7 +61,7 @@ class ControlForce():
         self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
         self.alpha_i = alpha_i
 
-        return Cl, Cd_form, V, lift, drag, alpha_i #Could add Cd_skin
+        return Cl, Cd_form, V, lift, drag, alpha_i, AoA #Could add Cd_skin
 
 
 class HullForce():

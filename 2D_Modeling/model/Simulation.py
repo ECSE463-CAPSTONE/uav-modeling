@@ -42,6 +42,7 @@ class Simulation_Result():
         self.control_force_body = []               # 1D array for body-frame x force of different control forces
         self.control_force_alpha_i = []         # 1D array for angle of attack
         self.control_force_moment = []          # 1D array for moment
+        self.control_force_AoA = []
 
         #Hull
         self.hull_flow_velocity = []        # 2D array for hull flow velocity
@@ -62,7 +63,7 @@ class Simulation_Result():
         self.time = []
     
     def save_simulation_results(self, delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
-                                control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
+                                control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, control_force_AoA,
                                 hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                 buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
                                 theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body):
@@ -80,6 +81,7 @@ class Simulation_Result():
         self.control_force_body.append([control_force_x,control_force_z])               # 1D array for body-frame x force of different control forces
         self.control_force_alpha_i.append(control_force_alpha_i)         # 1D array for angle of attack
         self.control_force_moment.append(control_force_moment)          # 1D array for moment
+        self.control_force_AoA.append(control_force_AoA)
 
         #Hull
         self.hull_flow_velocity.append(hull_flow_velocity)        # 2D array for hull flow velocity
@@ -180,10 +182,11 @@ class Simulation():
         control_flow_velocity = []
         control_force_magnitude  = []
         control_force_alpha_i = []
+        control_force_AoA = []
 
         for f_i, force in enumerate(self.rigidbody.control_forces):
             # Calculate control lift and drag force [drag, lift]
-            Cl, Cd, V, lift, drag, alpha_i = force.calculate_force(velocity_states)
+            Cl, Cd, V, lift, drag, alpha_i, AoA = force.calculate_force(velocity_states)
         
             # Store values
             control_force_C_D.append(Cd)
@@ -191,8 +194,9 @@ class Simulation():
             control_flow_velocity.append(V)
             control_force_magnitude.append([drag, lift])
             control_force_alpha_i.append(alpha_i)
+            control_force_AoA.append(AoA)
         
-        return hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t
+        return hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t, control_force_AoA
 
 
     ##################################################################################################
@@ -254,7 +258,7 @@ class Simulation():
         bf_velocities = T.T @ np.array([x_dot, z_dot])  # Body-frame velocities using inverse of T
 
         # 2. Solve for forces using the body-frame velocities
-        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t = \
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t, control_force_AoA = \
             self.solve_forces(x, z, bf_velocities[0], bf_velocities[1], theta_dot)
 
         # 3. Get total forces and moments
@@ -291,19 +295,6 @@ class Simulation():
         bf_velocities[1] +=  bf_accelerations[1] * self.sim.dt
         #bf_positions[0] +=  bf_velocities[0] * self.sim.dt probably not needed?
         #bf_positions[1] +=  bf_velocities[1] * self.sim.dt
-        
-        ####################################
-        # # 5. Calculate body-frame accelerations (q_dot_dot)
-        # ax_body = (
-        #     total_force_x / self.rigidbody.mass 
-        #     + theta_dot * bf_velocities[1]
-        # )
-        # az_body = (
-        #     total_force_z / self.rigidbody.mass 
-        #     - theta_dot * bf_velocities[0]
-        # )
-        # bf_accelerations = np.array([ax_body, az_body])
-        ############################
 
         # 6. Transform body accelerations to the inertial frame using T_full
         T_dot = self.transformation_matrix_dot(theta, theta_dot)
@@ -325,7 +316,7 @@ class Simulation():
         ## Append results
         if save_sim:
             self.sim.save_simulation_results(delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
-                                    control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
+                                    control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, control_force_AoA,
                                     hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                     buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
                                     theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
@@ -346,31 +337,35 @@ class Simulation():
     ######################################## CALCULATE JACOBIAN ######################################
     ##################################################################################################
 
-    def calculate_jacobian(self, v, pitch_angle, epsilon):
+    def calculate_jacobian(self, Velocity, epsilon):
         # Initialize system
-        if self.sim: #Temporary save of sim results if they exist
-            temp_save = self.sim
+        self.sim_jac = Simulation_Result(dt = 1, N = 2)
 
-        self.sim = Simulation_Result(dt = 1, N = 2)
+        #Solve first iteration
+        res, residual = self.solve_equilibrium_state_LS_Vel(Velocity)
+        self.sim_jac = self.eq_sim
+        self.sim.time = [0]
 
-        x = np.zeros(6)
-        x[2] = pitch_angle
-        x[3] = v
-        xdot = np.array(self.system_dynamics(0, x))
+        # Add perturbation to states
+        X = [0, 0, self.sim_jac.pitch_angle[0], self.sim_jac.inertial_velocity[0][0], self.sim_jac.inertial_velocity[0][1], self.sim_jac.pitch_rate[0]]
+
+        # Get X dot from equilibrium
+        X_dot = np.array(self.system_dynamics(0, X))
+        # X_dot[0] += Velocity
+
         # Calculate the Jacobian
         jacobian = np.zeros((6, 6))
         for i in range(6):
             # Perturb the state vector
-            perturbed_state = np.copy(x)
+            perturbed_state = [0, 0, self.sim_jac.pitch_angle[0], self.sim_jac.inertial_velocity[0][0], self.sim_jac.inertial_velocity[0][1], self.sim_jac.pitch_rate[0]]
             perturbed_state[i] += epsilon
             # Simulate the system with the perturbed state
             xdot_ie = np.array(self.system_dynamics(0, perturbed_state))
             # Calculate the Jacobian element
-            jacobian[:, i] = (xdot - xdot_ie) / epsilon
+            jacobian[:, i] = (X_dot - xdot_ie) / epsilon
             #print('pstate '+ str(perturbed_state))
             #print('xdot pertu '+ str(xdot_ie))
 
-        self.sim = temp_save #Reassociate the correct self.sim
         return jacobian
 
     ##################################################################################################
@@ -555,7 +550,7 @@ class Simulation():
         bf_accelerations = [0,0]
 
         # Calculate sum of forces/moments
-        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t \
+        hull_force_magnitude, hull_flow_velocity, control_force_C_D, control_force_C_L, control_flow_velocity, control_force_magnitude, control_force_alpha_i, delta_t, control_force_AoA \
                 = self.solve_forces(0, 0, bf_velocities[0], bf_velocities[1], 0)    
         
         _, mass_force_x, buoyancy_force_x, tow_force_x, control_force_x, hull_force_x , \
@@ -567,9 +562,9 @@ class Simulation():
 
         # Save equilibrium results
         self.eq_sim.save_simulation_results(delta_t, tow_force_x, tow_force_z, tow_force_moment, control_force_C_D, control_force_C_L, control_flow_velocity,
-                                control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, 
+                                control_force_magnitude, control_force_x, control_force_z, control_force_alpha_i, control_force_moment, control_force_AoA,
                                 hull_flow_velocity, hull_force_magnitude, hull_force_x, hull_force_z, hull_force_moment,
                                 buoyancy_force_x, buoyancy_force_z, buoyancy_moment, mass_force_x, mass_force_z, 
                                 theta, bf_velocities, bf_accelerations, theta_dot, inertial_position, inertial_velocity, inertial_acceleration, alpha_body)
         
-        return result.x
+        return result.x, residual
