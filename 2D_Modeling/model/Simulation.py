@@ -307,8 +307,8 @@ class Simulation():
         body_acc_vector = np.hstack((bf_velocities, bf_accelerations))
         inertial_vector = T_full @ body_acc_vector
         inertial_acceleration = [inertial_vector[2],inertial_vector[3]]  # [x_ddot, z_ddot]         # Extract inertial-frame accelerations from the transformed vector
-        inertial_velocity_xxx = [inertial_vector[0],inertial_vector[1]]
-        inertial_velocity = [x_dot + inertial_acceleration[0] * self.sim.dt, z_dot + inertial_acceleration[1] * self.sim.dt] #as given by solver
+        inertial_velocity = [inertial_vector[0],inertial_vector[1]]
+        # inertial_velocity = [x_dot + inertial_acceleration[0] * self.sim.dt, z_dot + inertial_acceleration[1] * self.sim.dt] #as given by solver
         inertial_position = [x + inertial_velocity[0] * self.sim.dt, z + inertial_velocity[1] * self.sim.dt]           #as given by solver
         
 
@@ -362,11 +362,10 @@ class Simulation():
             # Simulate the system with the perturbed state
             xdot_ie = np.array(self.system_dynamics(0, perturbed_state))
             # Calculate the Jacobian element
-            jacobian[:, i] = (X_dot - xdot_ie) / epsilon
-            #print('pstate '+ str(perturbed_state))
-            #print('xdot pertu '+ str(xdot_ie))
+            jacobian[:, i] = (xdot_ie - X_dot) / epsilon
 
-        return jacobian, X
+        eigenvalues, eigenvectors = np.linalg.eig(jacobian)
+        return jacobian, eigenvalues, eigenvectors, X
 
     ##################################################################################################
     ######################################## EQUILIBRIUM STATE ########################################

@@ -54,9 +54,18 @@ class PlotManager():
         if i == 0:
             plt.grid(True)
             plt.legend()
-            plt.xlabel('X-axis')
-            plt.ylabel('Y-axis')
+            # plt.xlabel('X-axis')
+            # plt.ylabel('Y-axis')
             plt.title('Free Body Diagram with Rotated Forces and Rectangle')
+            # plt.axis('off')
+            # Hide ticks and labels
+            ax = plt.gca()  # Get the current axes
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.set_xticklabels([])  # Remove x-axis labels
+            ax.set_yticklabels([])  # Remove y-axis labels
             plt.show()
             
         return fig, ax

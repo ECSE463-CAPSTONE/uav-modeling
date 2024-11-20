@@ -81,8 +81,8 @@ class RigidBody:
                                            self.center_of_buoyancy[1] * np.sin(theta))
         
         #Tow Force Moment
-        tow_force_moment = self.tow_force.magnitude * (np.sin(self.tow_force.delta_t - theta) * self.tow_force.location[0] +\
-                                                       np.cos(self.tow_force.delta_t - theta) * self.tow_force.location[1])
+        tow_force_moment = self.tow_force.magnitude * (np.sin(self.tow_force.delta_t - theta) * self.tow_force.location[0] \
+                                                       + np.cos(self.tow_force.delta_t - theta) * self.tow_force.location[1])
 
         #Control Force Moment
         control_force_moment = np.sum([(f.location[0] * (f.magnitude[0] * np.sin(f.alpha_i) + f.magnitude[1] * np.cos(f.alpha_i)) \
