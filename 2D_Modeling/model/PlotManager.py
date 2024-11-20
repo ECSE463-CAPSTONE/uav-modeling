@@ -269,24 +269,25 @@ class PlotManager():
         fig.tight_layout()
         plt.show()
 
-    def plot_poles(self, eigenvalues):
-    # Extract real and imaginary parts
-        real_parts = [z.real for z in eigenvalues]
-        imag_parts = [z.imag for z in eigenvalues]
-
+    def plot_poles(self, eigenvalues, input = []):
+        #Input format is input = ["Variable name", [variable values]]
         fig = plt.figure(figsize=(6, 6))
+
+        for i, eig in enumerate(eigenvalues):
+            real_parts = [z.real for z in eig]
+            imag_parts = [z.imag for z in eig]
+            # Plot poles (eigenvalues)
+            if not input:
+                plt.scatter(real_parts, imag_parts, marker='x', label='Poles')
+            else:
+                plt.scatter(real_parts, imag_parts, marker='x', label='Poles of ' + input[0] + ' ' + str(input[1][i]))
+
         plt.axhline(0, color='black', linewidth=0.5, linestyle='--')  # Horizontal axis
         plt.axvline(0, color='black', linewidth=0.5, linestyle='--')  # Vertical axis
-
-        # Plot poles (eigenvalues)
-        plt.scatter(real_parts, imag_parts, color='red', marker='x', label='Poles')
-        plt.scatter(real_parts, imag_parts, color='red', marker='x', label='Poles')
-
         # Add grid, labels, and legend
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.xlabel('Real Part')
         plt.ylabel('Imaginary Part')
         plt.title('Pole-Zero Plot (Eigenvalues as Poles)')
         plt.legend()
-        # plt.axis('equal')  # Equal scaling for better visualization
         plt.show()
