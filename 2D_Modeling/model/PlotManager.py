@@ -271,7 +271,7 @@ class PlotManager():
 
     def plot_poles(self, eigenvalues, input = []):
         #Input format is input = ["Variable name", [variable values]]
-        fig = plt.figure(figsize=(6, 6))
+        fig, ax = plt.subplots()
 
         for i, eig in enumerate(eigenvalues):
             real_parts = [z.real for z in eig]
@@ -291,3 +291,4 @@ class PlotManager():
         plt.title('Pole-Zero Plot (Eigenvalues as Poles)')
         plt.legend()
         plt.show()
+        return fig, ax
