@@ -367,6 +367,21 @@ class Simulation():
         eigenvalues, eigenvectors = np.linalg.eig(jacobian)
         return jacobian, eigenvalues, eigenvectors, X
 
+
+    ##################################################################################################
+    ######################################## LINEARIZED MODEL ########################################
+    ##################################################################################################
+
+
+    def linearized_model(self, perturbed_state, X_eq, jacobian, N=1000, t_span=[0,2]):
+    ## Run Linearized model
+        def lin_model(t, x):
+            return jacobian @ (x - X_eq)
+
+        # Simulate the linearized system using solve_ivp
+        solution = solve_ivp(lin_model, t_span, perturbed_state, t_eval=np.linspace(t_span[0],t_span[1], N))
+        return solution
+
     ##################################################################################################
     ######################################## EQUILIBRIUM STATE ########################################
     #################################################################################################
