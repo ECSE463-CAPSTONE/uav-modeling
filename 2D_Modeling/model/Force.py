@@ -1,91 +1,123 @@
 import numpy as np
 
-rho = 1000
+rho = 999.7
 g = 9.81
+mu = 0.001308
 
-class Force:
-    def __init__(self, location, N):
-        self.location = location  # Location wrt body frame [x, z]
-        self.magnitude = np.zeros((N,2))  # Force magnitude as a vector
-        self.current_magnitude = 0
-        self.angle_of_attacks = []
-
-        ## ADD something to save CL and CD
-
-class ControlForce(Force):
-    def __init__(self, location, N, A, C_L_alpha, C_D0, e = 0.85):
-        super().__init__(location, N)
-        self.A = A # aspect ratio
+class ControlForce():
+    def __init__(self, location, delta_i, AR, area, chord, stall_threshold, C_L_alpha, C_L_alpha_offset , e = 0.85):
+        self.AR = AR # aspect ratio
+        self.Area = area # surface area
+        self.chord = chord
+        self.stall_threshold = stall_threshold
         self.C_L_alpha = C_L_alpha #slope of 2D lift curve
-        self.C_D0 = C_D0 #parasite drag coefficient
+        self.C_L_alpha_offset = C_L_alpha_offset #CL Alpha offset
         self.e = e # Oswald efficiency factor
+        self.location = location # [r_x, r_z] location relative to COM
+        self.delta_i = delta_i #Fixed angle of attack of the control force
+        self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
+        self.alpha_i = [] #temporary value storing
     
-    
-    def calculate_alpha_i(self, velocity_states, relative_position):
+    def calculate_alpha_i(self, velocity_states):
         u, w, q = velocity_states
         r_x, r_z = self.location 
-        # print(f'u,v,w : {u}, {w}, {q}')
-        # print(f'r_x, r_z: {r_x}  z, {r_z}')
-        alpha = np.arctan((w - q * r_x) / (u + q * r_z))
+        alpha_i = np.arctan((w - q * r_x) / (u + q * r_z))
 
-        if np.isnan(alpha):
-            alpha = 0
+        if np.isnan(alpha_i):
+            alpha_i = 0
 
-        
-        # print(f'alpha {(alpha)}')
-        self.angle_of_attacks.append(alpha)
-        self.angle_of_attack = alpha
+        #alpha i is before adding in control surface angle of attack
+        return alpha_i
 
     
-    def calculate_cl_cd(self, velocity_states):
+    def calculate_cl_cd(self, alpha_i, Re):
         """Calculate the lift and drag coefficients based on the angle of attack"""
-        A = self.A
+        AoA = min(np.deg2rad(self.stall_threshold),abs(alpha_i + self.delta_i)) * np.sign(alpha_i + self.delta_i)
 
-        #ADD STALLL:  
-        Cl = self.C_L_alpha * A / ( 2 * (A + 4) / (A + 2))  * self.angle_of_attack  # Lift coefficient, eq. 19
-        Cd = self.C_D0 + Cl**2 / (np.pi * A * self.e)  # Drag coefficient, eq. 20
-        return Cl, Cd
+        Cl = -self.C_L_alpha_offset + self.C_L_alpha * self.AR / ( 2 * (self.AR + 4) / (self.AR + 2))  *  AoA # Lift coefficient, eq. 19
+        Cd_form = Cl**2 / (np.pi * self.AR * self.e)  # Drag coefficient, eq. 20
+        Cd_skin = 0.0576/(Re**(1/5))
+        return Cl, Cd_form, Cd_skin, AoA
 
    
     # CALCULATES WITH RESPECT TO V NOT IN BODY FRAME
-    def calculate_force(self, velocity_states, rel_position):
+    def calculate_force(self, velocity_states):
         """Calculate the actual force vector from lift and drag"""
-        r_x, r_z = rel_position 
+        r_x, r_z = self.location 
         u, w, q = velocity_states
 
-        self.calculate_alpha_i(velocity_states, rel_position)
-        Cl, Cd = self.calculate_cl_cd(velocity_states)
-        
+        alpha_i = self.calculate_alpha_i(velocity_states)
+
         V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
-        lift = 0.5 * rho * Cl * self.A * V ** 2
-        drag = 0.5 * rho * Cd * self.A * V ** 2
 
-        return np.array([-drag, lift])  # Return force vector in body frame (x, z)
+        Re = rho * V * self.chord / mu
+        Cl, Cd_form, Cd_skin, AoA = self.calculate_cl_cd(alpha_i, Re)
 
-class TowingForce(Force):
-    def __init__(self, location,  N, tow_length, initial_magntidude, D):
-        super().__init__(location, N)
-        self.tow_length = tow_length
-        self.scalar_magnitude = initial_magntidude
-        self.D = D
+        lift = 0.5 * rho * Cl * self.Area * V ** 2
+        drag_form = 0.5 * rho * Cd_form * self.Area * V ** 2
+        drag_skin = 0.5 * rho * Cd_skin * 2*self.Area * V ** 2
+        drag = drag_form + drag_skin
+
+        self.magnitude = np.array([drag, lift])  # Return force vector in body frame (x, z)
+        self.alpha_i = alpha_i
+
+        return Cl, Cd_form, V, lift, drag, alpha_i, AoA #Could add Cd_skin
 
 
-    ## Fix the direction intead      
+class HullForce():
+    def __init__(self,location, surface_area, frontal_area, chord , Cd, correction):
 
-    def calculate_direction(self, D, tow_depth, pitch_angle):
-        # D is distance of drone form see, z is inertia position of uav
-        gamma = np.arcsin( (D  - tow_depth) / self.tow_length) - pitch_angle
-        if np.isnan(gamma):
-            raise ValueError("gamma is NaN, tow-length is too short")
-        return gamma
+        self.Cd = Cd * correction #Cylinder Cd Approximation
+        self.frontal_area = frontal_area
+        self.chord = chord
+        self.surface_area = surface_area
+        self.magnitude = np.zeros(2) # Array to save temporary values [drag, lift]
+        self.location = location
+        self.alpha_h = [] #temporary value storing
+
+    def calculate_alpha_h(self, velocity_states):
+        u, w, q = velocity_states
+        r_x, r_z = self.location 
+        alpha_h = np.arctan((w - q * r_x) / (u + q * r_z))
+
+        if np.isnan(alpha_h):
+            alpha_h = 0
+
+        return alpha_h
+
+    def calculate_force(self, velocity_states):
+        """Calculate the actual force vector from lift and drag"""
+        r_x, r_z = self.location 
+        u, w, q = velocity_states
         
+        self.alpha_h = self.calculate_alpha_h(velocity_states)
+        V = np.sqrt((u + q * r_z)**2 + (w - q * r_x)**2)
 
-    def calculate_force(self, i, D, tow_position, scalar_magnitude, pitch_angle):
-        # To implement
-        self.scalar_magnitude = scalar_magnitude
-        gamma = self.calculate_direction(D, tow_position, pitch_angle)
-        self.magnitude[i] = np.array([np.cos(gamma), np.sin(gamma)]) * self.scalar_magnitude
+        lift = 0
+        
+        #Calcualte drag force
+        Re = rho * V * self.chord / mu
+        Cd_0 = 0.0576/(Re**(1/5))
 
+        drag_form = 0.5 * rho * self.Cd * self.frontal_area * V ** 2
+        drag_skin = 0.5 * rho * Cd_0 * self.surface_area * V ** 2
+        drag = drag_form + drag_skin
+        self.magnitude = np.array([drag, lift])
+
+        return V, lift, drag # Return force vector in body frame (x, z)
+
+
+class TowingForce():
+    def __init__(self, location, magnitude, drone_height, drone_tow_length, probe_depth):
+        self.magnitude = magnitude
+        self.drone_height = drone_height
+        self.drone_tow_length = drone_tow_length
+        self.probe_depth = probe_depth
+        self.location = location
+        self.delta_t = 0
     
+    def calculate_force(self, x, z):
+        delta_t = (self.drone_height + self.probe_depth + z) / self.drone_tow_length
+        self.delta_t = delta_t
 
-        
+        return delta_t
