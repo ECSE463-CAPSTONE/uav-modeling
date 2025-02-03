@@ -1,6 +1,6 @@
 import numpy as np
 import inspect
-from Rotation import R_y, R_z
+from utilities.rotations import R_y, R_z
 from utilities.logger import log
 
 rho = 999.7  # Density of fluid (kg/m^3)
