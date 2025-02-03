@@ -12,8 +12,10 @@ class HullForce:
         self.file_path = file_path
         self.map = self.load_map()
 
-        #Positional Variables
-
+        #Positional Variables describing the nose position relative to the COM
+        self.r_x = []
+        self.r_y = []
+        self.r_z = []
 
     def load_map(self):
         map = pd.read_csv(self.file_path)
@@ -30,26 +32,28 @@ class HullForce:
         
 
     
-    def flow_velocity(self, u, v, w):
-        V = math.sqrt( (u) ** 2 + (v) ** 2 + (w) ** 2 )
+    def flow_velocity(self, u, v, w, p, q, r):
+        V = math.sqrt((u + q * self.r_z - r * self.r_y) ** 2 +
+                     (v + r * self.r_x - p * self.r_z) ** 2 +
+                     (w + p * self.r_y - q * self.r_x) ** 2)
         return V
     
-    def flow_alpha(self, u, v, w):
-        alpha = math.atan2(w, u)
+    def flow_alpha(self, u, v, w, p, q, r):
+        alpha = math.atan2((w + p * self.r_y - q * self.r_x), (u + q * self.r_z - r * self.r_y))
         return alpha
     
-    def flow_beta(self, u, v, w, V):
-        beta = math.asin((v) / V)
+    def flow_beta(self, u, v, w, p, q, r, V):
+        beta = math.asin((v + r * self.r_x - p * self.r_z) / V)
         return beta
     
     def get_coefficients(self, alpha, beta):       
         yaw_pitch_points = self.map[["Yaw", "Pitch"]].to_numpy()
-        values = self.map[["CDA", "CLA", "CmYA", "CmZA", "CmXA", "CSA"]].to_numpy()
+        values = self.map[["CDA", "CSA", "CLA", "CmXA", "CmYA", "CmZA"]].to_numpy()
         interpolated_values = griddata(yaw_pitch_points, values, (beta, alpha), method='linear')
-        return interpolated_values #[CDA, CLA, CmYA, CmZA, CmXA, CSA]
+        return interpolated_values #["CDA", "CSA", "CLA", "CmXA", "CmYA", "CmZA"]
 
     
-    def translate_force():       
+    def translate_force():
         return
     
     def rotate_force():
