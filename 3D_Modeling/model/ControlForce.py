@@ -1,6 +1,6 @@
 import numpy as np
 import inspect
-from rotations import R_y, R_z
+from Rotation import R_y, R_z
 from utilities.logger import log
 
 rho = 999.7  # Density of fluid (kg/m^3)
@@ -29,8 +29,8 @@ class ControlForce:
         
         self.tracked_data = {}  # Dictionary to store selected variables
     
-    def set_location(self, global_location):
-        """Assign the global location of the control force."""
+    def set_global_location(self, global_location):
+        """Assign the global location of the control force relative to nose"""
         self.global_location = np.array(global_location)
         if self.is_vertical:
             self.global_location += np.array([0, self.COM_rel_to_edge, 0])
@@ -41,7 +41,7 @@ class ControlForce:
         """Calculate the relative location of the control force with respect to the rigid body's center of mass."""
         if self.global_location is None:
             raise ValueError("Global location is not set.")
-        self.relative_location = self.global_location - np.array(COM)
+        self.relative_location = self.global_location - COM
     
     def calculate_reynolds_number(self, V):
         """Calculate the Reynolds number based on velocity."""
@@ -69,7 +69,6 @@ class ControlForce:
         if self.is_vertical:
             alpha_i_prime, beta_i_prime = beta_i_prime, alpha_i_prime
         
-        self.tracked_data.update(log([V, alpha_i_prime, beta_i_prime]))
         return V, alpha_i_prime, beta_i_prime
     
     def calculate_cl_cd(self, alpha_i, beta_i, Re):
@@ -78,7 +77,7 @@ class ControlForce:
         
         # 3D lift coefficient correction factor
         kappa = self.AR / (self.AR + 2 * (self.AR + 4) / (self.AR + 2))
-        Cl = (self.C_L_alpha * kappa * AoA) - self.C_L_alpha_offset
+        Cl = (self.C_L_alpha * kappa * AoA) + self.C_L_alpha_offset
         
         # Induced and skin drag
         Cd_induced = (Cl ** 2) / (np.pi * self.AR * self.e)

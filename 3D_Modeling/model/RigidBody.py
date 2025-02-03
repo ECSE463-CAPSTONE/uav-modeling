@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from .Force import Force, ControlForce, TowingForce
+from ControlForce import ControlForce
+from TowForce import TowForce
 
 #Global variables
 g = 9.81
@@ -19,7 +20,7 @@ class RigidBody:
 
         # Store forces and moments
         self.control_forces = []  # List of forces acting on the body
-        self.tow_force : Force
+        self.tow_force : TowForce
         self.moments = []  # List of moments about the y-axis (pitch)
 
         # Initial conditions for position, velocity, and pitch
@@ -33,9 +34,9 @@ class RigidBody:
     def add_tow_force(self, force):
         self.tow_force = force
 
-    def add_control_force(self, force):
+    def add_control_force(self, force, global_location):
         """Adds a force instance to the force list"""
-
+        self.control_forces.set_global_location(global_location)
         self.control_forces.append(force)
     
     def add_moment(self, moment):
@@ -66,8 +67,10 @@ class RigidBody:
         """Calculates the center of mass of the body."""
         # Assume control forces will have an associated mass and COM wrt wing tip
         COM = np.zeros(3)
+
+        # After COM is calculated, the relative location is auto updated
         for control_forces in self.control_forces:
-            control_forces.calculate_relative_position(COM)
+            control_forces.set_relative_location(COM)
         return
     
     def calculate_inertia(self):
