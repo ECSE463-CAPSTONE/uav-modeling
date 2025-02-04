@@ -28,6 +28,7 @@ class ControlForce:
         
         self.is_vertical = is_vertical  # Determines if the surface is vertical
         
+        self.body_forces = np.zeros(3)  # Initialize body forces
         self.tracked_data = {}  # Dictionary to store selected variables
     
     def set_global_location(self, global_location):

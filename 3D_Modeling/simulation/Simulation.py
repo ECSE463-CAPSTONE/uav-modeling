@@ -51,8 +51,14 @@ class Simulation:
         # Velocities: u, v, w (linear), p, q, r (angular)
         
         for iteration in range(num_iterations):
-            forces, moments = self.rigid_body.compute_forces_and_moments()
             velocities = state[6:12]
+            # Update control forces based on velocities
+            for cf in self.control_forces.values():
+                cf['force'].calculate_force(velocities)
+            # Update hull force based on velocities
+            self.hull_force.calculate_force(velocities)
+            forces, moments = self.rigid_body.compute_forces_and_moments()
+            
             state = self._step(state, velocities, forces, moments, dt, method)
             self.log_iteration(iteration, state)
         

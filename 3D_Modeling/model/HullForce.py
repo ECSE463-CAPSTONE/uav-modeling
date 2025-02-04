@@ -17,12 +17,19 @@ class HullForce:
         self.r_y = []
         self.r_z = []
 
+        self.body_forces = np.zeros(3)
+        self.body_moments = np.zeros(3)
+
         self.tracked_date = {}
 
     def load_map(self):
         map = pd.read_csv(self.file_path)
         return map
   
+    # UPDATE THIS FUNCTION TO TAKE THE VELOCITIES AND ROTATIONS
+    #   SIMILAR TO CONTROL FORCE OR DONT YOU ALSO NEED THE ATTITUDES
+    #   I WILL FIX THE RUN SIMULATION ACCORDINGLY
+
     def calculate_force(self,u,v,w):
         # The main function to calculate all the forces
         V = self.flow_velocity(u, v, w)

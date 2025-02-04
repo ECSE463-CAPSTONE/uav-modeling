@@ -48,6 +48,7 @@ class RigidBody:
     def sum_forces(self, i):
         """Sums up all forces acting on the body in x and z directions"""
         # print('Summing forces', self.tow_force.magnitude[i, 0] )
+        # USE SELF.CONTROL_FORCE.BODY_FORCE TO GET THE FORCE IN THE BODY FRAME
         return 
     
     def sum_moments(self, i):
