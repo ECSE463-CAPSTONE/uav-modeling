@@ -2,6 +2,7 @@ import numpy as np
 import inspect
 from utilities.rotations import R_y, R_z
 from utilities.logger import log
+from utilities.angles_of_attack import compute_velocity_alpha_beta
 
 rho = 999.7  # Density of fluid (kg/m^3)
 g = 9.81  # Gravitational acceleration (m/s^2)
@@ -47,29 +48,19 @@ class ControlForce:
         """Calculate the Reynolds number based on velocity."""
         return rho * V * self.chord / mu
     
-    def calculate_alpha_beta(self, velocity_states):
-        """Calculate the local angle of attack and sideslip at the control surface location."""
-        if self.relative_location is None:
-            raise ValueError("Relative location is not set.")
+    def calculate_velocity_alpha_beta(self, velocity_states):
+        """Compute the velocity, angle of attack, and sideslip angle using a utility function."""
+        V, alpha_i, beta_i = compute_velocity_alpha_beta(velocity_states, self.relative_location)
         
-        u, v, w, p, q, r = velocity_states
-        r_x, r_y, r_z = self.relative_location
-        
-        # Effective flow velocity at the control surface location
-        V = np.sqrt((u + q * r_z - r * r_y) ** 2 + (v + r * r_x - p * r_z) ** 2 + (w + p * r_y - q * r_x) ** 2)
-        
-        # Angle of attack (horizontal plane)
-        alpha_i = np.arctan2(w + p * r_y - q * r_x, u + q * r_z - r * r_y)
-        alpha_i_prime = alpha_i + self.delta_i_h
-        
-        # Sideslip angle (vertical plane)
-        beta_i = np.arcsin((v + r * r_x - p * r_z) / V)
-        beta_i_prime = beta_i + self.delta_i_v
-        
+        # Swap alpha and beta if the control force is vertical
         if self.is_vertical:
-            alpha_i_prime, beta_i_prime = beta_i_prime, alpha_i_prime
+            alpha_i, beta_i = beta_i, alpha_i
         
-        return V, alpha_i_prime, beta_i_prime
+        # Add fixed deflections
+        alpha_i += self.delta_i_h
+        beta_i += self.delta_i_v
+        
+        return V, alpha_i, beta_i
     
     def calculate_cl_cd(self, alpha_i, beta_i, Re):
         """Calculate lift and drag coefficients based on angle of attack and Reynolds number."""

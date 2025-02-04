@@ -76,7 +76,13 @@ class RigidBody:
     def calculate_inertia(self):
         """Calculates the inertia of the body."""
         # Assume inertia is constant and acts at the center of mass
-        return
+        inertia = np.zeros((3, 3))
+        return inertia
 
+    def calculate_mass(self):
+        """Calculates the mass of the body."""
+        # Assume mass is constant
+        mass = self.mass + sum(control_force.mass for control_force in self.control_forces)
+        return mass
     
    
