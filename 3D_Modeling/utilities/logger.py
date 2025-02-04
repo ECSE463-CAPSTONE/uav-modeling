@@ -79,3 +79,34 @@ def consolidate_logs(logs):
             consolidated[key].append(logs[timestep].get(key, None))
 
     return consolidated
+
+def flatten_logs(nested_dict, parent_key='', separator='_'):
+    """
+    Flattens a nested dictionary by concatenating keys.
+    
+    Args:
+        nested_dict (dict): The nested dictionary to flatten.
+        parent_key (str, optional): The prefix for keys (used for recursion).
+        separator (str, optional): The separator used to concatenate keys.
+
+    Returns:
+        dict: A flattened dictionary with no nested structures.
+    """
+    flattened_dict = {}
+
+    def recurse(current_dict, current_key):
+        for key, value in current_dict.items():
+            # Remove 'control_forces' from the key path
+            if current_key == 'control_forces':
+                new_key = key
+            else:
+                new_key = f"{current_key}{separator}{key}" if current_key else key
+            
+            if isinstance(value, dict):
+                recurse(value, new_key)
+            else:
+                flattened_dict[new_key] = value
+
+    recurse(nested_dict, parent_key)
+    return flattened_dict
+

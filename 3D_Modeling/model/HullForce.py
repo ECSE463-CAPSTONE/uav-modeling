@@ -17,6 +17,8 @@ class HullForce:
         self.r_y = []
         self.r_z = []
 
+        self.tracked_date = {}
+
     def load_map(self):
         map = pd.read_csv(self.file_path)
         return map
