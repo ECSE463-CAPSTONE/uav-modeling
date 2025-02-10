@@ -77,21 +77,44 @@ class RigidBody:
             positions.append(control_forces.global_location)
             masses.append(control_forces.mass)
 
-        self.COM = np.sum(positions.T * masses, axis=1) / total_mass
+        COM = np.sum(positions.T * masses, axis=1) / total_mass
 
         # After COM is calculated, the relative location is auto updated
-        self.hull_force.calculate_relative_location(self.COM)
+        self.hull_force.calculate_relative_location(COM)
         for control_forces in self.control_forces:
-            control_forces.calculate_relative_location(self.COM)
+            control_forces.calculate_relative_location(COM)
 
-        return
+        return COM, total_mass
 
     
     def calculate_inertia(self):
         """Calculates the inertia of the body."""
         # Assume inertia is constant and acts at the center of mass
-        inertia = np.zeros((3, 3))
-        return inertia
+        positions = np.array(self.hull_force.global_location)  # Shape (N, 3) for 3D or (N, 2) for 2D
+        masses = np.array(self.hull_force.mass)  # Shape (N,)
+        
+        for control_forces in self.control_forces:
+            positions.append(control_forces.global_location)
+            masses.append(control_forces.mass)
+
+        x, y, z = positions.T
+        Ixx = np.sum(masses * (y**2 + z**2))
+        Iyy = np.sum(masses * (x**2 + z**2))
+        Izz = np.sum(masses * (x**2 + y**2))
+        Ixy = -np.sum(masses * (x * y))
+        Ixz = -np.sum(masses * (x * z))
+        Iyz = -np.sum(masses * (y * z))
+
+        inertia_matrix = np.array([
+            [Ixx, Ixy, Ixz],
+            [Ixy, Iyy, Iyz],
+            [Ixz, Iyz, Izz]
+        ])
+        #Ixx = inertia[0, 0]
+        #Iyy = inertia[1, 1]
+        #Izz = inertia[2, 2]
+        #Ixz = inertia[0, 2]
+        return inertia_matrix
 
     def calculate_mass(self):
         """Calculates the mass of the body."""
