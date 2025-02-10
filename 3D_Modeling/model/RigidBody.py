@@ -39,10 +39,8 @@ class RigidBody:
         self.control_forces.set_global_location(global_location)
         self.control_forces.append(force)
     
-    def add_moment(self, moment):
-        """Adds a moment about the y-axis"""
-        self.moments.append(moment)
-    
+    def add_hull_force(self, force):
+        self.hull_force = force
 
     ## Fix according to write up:
     def sum_forces(self, i):
@@ -66,13 +64,28 @@ class RigidBody:
 
     def calculateCOM(self):
         """Calculates the center of mass of the body."""
-        # Assume control forces will have an associated mass and COM wrt wing tip
-        COM = np.zeros(3)
+        # Assume control forces will have an associated mass and COM wrt wing tip      
+
+        #add up all the masses together
+        total_mass = self.hull_force.mass + sum(control_force['mass'] for control_force in self.control_forces)
+
+
+        positions = np.array(self.hull_force.global_location)  # Shape (N, 3) for 3D or (N, 2) for 2D
+        masses = np.array(self.hull_force.mass)  # Shape (N,)
+        
+        for control_forces in self.control_forces:
+            positions.append(control_forces.global_location)
+            masses.append(control_forces.mass)
+
+        self.COM = np.sum(positions.T * masses, axis=1) / total_mass
 
         # After COM is calculated, the relative location is auto updated
+        self.hull_force.calculate_relative_location(self.COM)
         for control_forces in self.control_forces:
-            control_forces.set_relative_location(COM)
+            control_forces.calculate_relative_location(self.COM)
+
         return
+
     
     def calculate_inertia(self):
         """Calculates the inertia of the body."""
