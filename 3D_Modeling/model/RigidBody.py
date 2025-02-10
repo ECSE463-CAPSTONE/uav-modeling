@@ -3,6 +3,7 @@ from scipy.integrate import solve_ivp
 
 from ControlForce import ControlForce
 from TowForce import TowForce
+import utilities.rotations as R
 
 #Global variables
 g = 9.81
@@ -14,7 +15,7 @@ class RigidBody:
         self.volume = volume    
         self.I= inertia                                 # Inertia Matrix
         self.COM = COM                                  # Center of mass [x,
-        self.center_of_buoyancy = center_of_buoyancy    # Center of buoyancy [x, z]
+        self.center_of_buoyancy = center_of_buoyancy    # Center of buoyancy [x, y, z]
         self.buoyancy  = rho * g * self.volume
 
 
@@ -43,16 +44,43 @@ class RigidBody:
         self.hull_force = force
 
     ## Fix according to write up:
-    def sum_forces(self, i):
+    def sum_forces_moments(self, position_states, velocity_states):
         """Sums up all forces acting on the body in x and z directions"""
         # print('Summing forces', self.tow_force.magnitude[i, 0] )
         # USE SELF.CONTROL_FORCE.BODY_FORCE TO GET THE FORCE IN THE BODY FRAME
-        return 
-    
-    def sum_moments(self, i):
+        # position_states = [x, y, z , roll, pitch, yaw] this is in the body frame. (i believe?)
+        x, y, z , roll, pitch, yaw = position_states
+        delta = np.array([x, y, z]) # I forget if this is accumulated or relative to the initial condition. need to debug this value properly.
+
+        # mass force (inertial) #yaw pitch roll are states that we calculate
+        mass_forces = self.mass * 9.81 * np.array([0], [0], [1]) @ ( R.R_z(yaw) @ R.R_y(pitch) @ R.R_x(roll) )
+
+        #buoyancy force and moments
+        buoyancy_forces = self.buoyancy * np.array([0], [0], [-1]) @ ( R.R_z(yaw) @ R.R_y(pitch) @ R.R_x(roll) )
+        buoyancy_moments = np.cross(self.center_of_buoyancy, buoyancy_forces)
+
+        #hull force and moments
+        hull_forces, hull_moments = self.hull_force.calculate_force(velocity_states)
+
+        # towing forces and moments
+        tow_forces = self.tow_force.calculate_tow_force(delta, roll, pitch, yaw)
+        tow_moments = np.cross(self.tow_force.relative_location, tow_forces) #r x F
+
+        #control forces and moments, indexed for easier debugging!
+        ctrl_forces = []
+        ctrl_moments = []
+        for idx, control_forces in enumerate(self.control_forces):
+            ctrl_forces(idx) = control_forces.calculate_force(velocity_states)
+            ctrl_moments(idx) = np.cross(control_forces.relative_location, ctrl_forces)
+
+        # sum of forces
+        forces = mass_forces + buoyancy_forces + hull_forces + tow_forces + np.sum(ctrl_forces, axis=0)
+
+        # sum of moments
+        moments = buoyancy_moments + hull_moments + tow_moments + np.sum(ctrl_moments, axis=0)
+
+        return forces, moments
         
-        return 
-    
     
     def initialize_system(self, initial_inertial_position, initial_inertial_velocity): 
         """Initializes the system with the initial position and velocity of the body."""
@@ -81,6 +109,7 @@ class RigidBody:
 
         # After COM is calculated, the relative location is auto updated
         self.hull_force.calculate_relative_location(COM)
+        self.tow_force.calculate_relative_location(COM)
         for control_forces in self.control_forces:
             control_forces.calculate_relative_location(COM)
 
@@ -119,6 +148,7 @@ class RigidBody:
     def calculate_mass(self):
         """Calculates the mass of the body."""
         # Assume mass is constant
+        #### Unused???
         mass = self.mass + sum(control_force.mass for control_force in self.control_forces)
         return mass
     

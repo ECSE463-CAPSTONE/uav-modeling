@@ -1,5 +1,5 @@
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 from scipy.interpolate import griddata
 from utilities.angles_of_attack import compute_velocity_alpha_beta
 import utilities.rotations as R
@@ -45,7 +45,10 @@ class HullForce:
 
         #this line returns a 6x1 column vector of [Fx, Fy, Fz, Mx, My, Mz] about the global center of mass
         translated_rotated_force_moments = self.translate_force(rotated_force_moments)
-        return translated_rotated_force_moments
+
+        body_frame_force = translated_rotated_force_moments[:3,0]
+        body_frame_moment = translated_rotated_force_moments[3:,0]
+        return body_frame_force, body_frame_moment
         
     
     def get_coefficients(self, alpha, beta):       
@@ -62,7 +65,7 @@ class HullForce:
 
         #add hull com location to relative global com location to get nose to global com distance
         com_global_location = self.relative_location + self.global_location
-        
+
         #com global location comes from the rigid body object
         cross_product = np.cross(forces, com_global_location.flatten())  # Compute cross product
         translated_moments = moments + cross_product.reshape(3, 1)  # Add to v2

@@ -4,7 +4,7 @@ from utilities.rotations import R_x, R_y, R_z
 from utilities.logger import log
 
 class TowForce:
-    def __init__(self, tow_rope_length, drone_height, probe_depth, tow_force_magnitude):
+    def __init__(self, tow_rope_length, drone_height, probe_depth, tow_force_magnitude, global_location):
         self.tow_rope_length = tow_rope_length  # Length of the tow rope
         self.drone_height = drone_height  # Height of the drone above the water
         self.probe_depth = probe_depth  # Depth of the probe below the water
@@ -15,6 +15,9 @@ class TowForce:
         self.tow_unit_body_vector = np.zeros(3)  # Normalized body-frame vector
         self.tow_force = np.zeros(3)  # Final force in body frame
         
+        self.global_location = global_location #nose to tow point
+        self.relative_location = None #com to tow point
+
         self.tracked_data = {}  # Dictionary to store logged values
     
     def calculate_global_vector(self, delta=np.array([0, 0, 0])):
@@ -74,4 +77,8 @@ class TowForce:
         self.tracked_data.update(log([azimuth, elevation]))
         return azimuth, elevation
     
-   
+    def calculate_relative_location(self, COM):
+        """Calculate the relative location of the control force with respect to the rigid body's center of mass."""
+        if self.global_location is None:
+            raise ValueError("Global location is not set.")
+        self.relative_location = self.global_location - COM
