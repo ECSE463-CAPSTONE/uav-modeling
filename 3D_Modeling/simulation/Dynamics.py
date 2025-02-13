@@ -8,9 +8,9 @@ class Dynamics:
         self.inertia_matrix = inertia_matrix  # Inertia matrix I
         self.tracked_data = {}  # Store logs for each iteration
 
-    def compute_accelerations(self, velocities, dt, forces, moments):
+    def compute_accelerations(self, bf_velocities, dt, forces, moments):
         """Compute the accelerations by solving Ax = B with dynamic dt."""
-        u, v, w, p, q, r = velocities
+        u, v, w, p, q, r = bf_velocities
 
         A = np.array([
             [1, -r * dt, q * dt, 0, w * dt, -v * dt],
@@ -31,5 +31,7 @@ class Dynamics:
         ])
         
         accelerations = np.linalg.solve(A, B)
+
+        self.tracked_data.update(log(accelerations))
        
         return accelerations

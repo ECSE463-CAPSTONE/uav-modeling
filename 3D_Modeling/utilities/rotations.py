@@ -44,3 +44,16 @@ def R_z_dot(theta_z, theta_z_dot):
         [0, 0, 0]
     ])
 
+def T_velocity(roll, pitch, yaw):
+    """Compute the full transformation matrix T."""
+    T1 = R_z(yaw) @ R_y(pitch) @ R_x(roll)
+    T2 = np.array([
+        [1, np.sin(roll) * np.tan(pitch), np.cos(roll) * np.tan(pitch)],
+        [0, np.cos(roll), -np.sin(roll)],
+        [0, np.sin(roll) / np.cos(pitch), np.cos(roll) / np.cos(pitch)]
+    ])
+    T = np.block([
+        [T1, np.zeros((3,3))],
+        [np.zeros((3,3)), T2]
+    ])
+    return T

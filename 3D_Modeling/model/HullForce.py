@@ -33,9 +33,9 @@ class HullForce:
     #   SIMILAR TO CONTROL FORCE OR DONT YOU ALSO NEED THE ATTITUDES
     #   I WILL FIX THE RUN SIMULATION ACCORDINGLY
 
-    def calculate_force(self, velocity_states):
+    def calculate_force(self, bf_velocity):
         # The main function to calculate all the forces
-        V, alpha, beta = compute_velocity_alpha_beta(velocity_states, self.relative_location)
+        V, alpha, beta = compute_velocity_alpha_beta(bf_velocity, self.relative_location)
         coefficients = self.get_coefficients(alpha, beta)
 
         #[Fx, Fy, Fz, Mx", My, Mz] need to check if they are in the right direction!!
@@ -46,9 +46,9 @@ class HullForce:
         #this line returns a 6x1 column vector of [Fx, Fy, Fz, Mx, My, Mz] about the global center of mass
         translated_rotated_force_moments = self.translate_force(rotated_force_moments)
 
-        body_frame_force = translated_rotated_force_moments[:3,0]
-        body_frame_moment = translated_rotated_force_moments[3:,0]
-        return body_frame_force, body_frame_moment
+        self.body_forces = translated_rotated_force_moments[:3,0]
+        self.body_moments = translated_rotated_force_moments[3:,0]
+        return self.body_forces, self.body_moments
         
     
     def get_coefficients(self, alpha, beta):       

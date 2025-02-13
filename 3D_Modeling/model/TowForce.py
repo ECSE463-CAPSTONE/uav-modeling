@@ -15,8 +15,10 @@ class TowForce:
         self.tow_unit_body_vector = np.zeros(3)  # Normalized body-frame vector
         self.tow_force = np.zeros(3)  # Final force in body frame
         
-        self.global_location = global_location #nose to tow point
-        self.relative_location = None #com to tow point
+        self.global_location = global_location # Hull Nose to tow point
+        self.relative_location = None # COM to tow point
+
+        self.body_forces = np.zeros(3)  # Final force in body frame
 
         self.tracked_data = {}  # Dictionary to store logged values
     

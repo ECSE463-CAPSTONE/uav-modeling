@@ -49,9 +49,9 @@ class ControlForce:
         """Calculate the Reynolds number based on velocity."""
         return rho * V * self.chord / mu
     
-    def calculate_velocity_alpha_beta(self, velocity_states):
+    def calculate_velocity_alpha_beta(self, bf_velocity):
         """Compute the velocity, angle of attack, and sideslip angle using a utility function."""
-        V, alpha_i, beta_i = compute_velocity_alpha_beta(velocity_states, self.relative_location)
+        V, alpha_i, beta_i = compute_velocity_alpha_beta(bf_velocity, self.relative_location)
         
         # Swap alpha and beta if the control force is vertical
         if self.is_vertical:
@@ -97,9 +97,9 @@ class ControlForce:
         
         # Transform to body frame
         T = R_z(beta_i) @ R_y(alpha_i)
-        body_forces = T @ force_vector
+        self.body_forces = T @ force_vector
         
         # Store selected values
-        self.tracked_data.update(log([Cl, Cd_induced, Cd_skin, V, lift, drag, alpha_i, beta_i, AoA, body_forces]))
+        self.tracked_data.update(log([Cl, Cd_induced, Cd_skin, V, lift, drag, alpha_i, beta_i, AoA, self.body_forces]))
         
-        return body_forces
+        return self.body_forces

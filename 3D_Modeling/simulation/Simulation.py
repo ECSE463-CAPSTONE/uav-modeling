@@ -1,6 +1,10 @@
 import numpy as np
 from utilities.logger import log, consolidate_logs, flatten_logs
+from utilities.rotations import T_velocity
+
 from Dynamics import Dynamics
+
+
 
 class Simulation:
     def __init__(self, rigid_body, control_forces, tow_force, hull_force):
@@ -34,35 +38,52 @@ class Simulation:
             'control_forces': control_force_logs,
             'hull_force': self.hull_force.tracked_data.copy(),
             'tow_force': self.tow_force.tracked_data.copy(),
+            'bf_accelerations': self.dynamics.tracked_data.copy(),
             'dynamics': log([state])
         })
         self.simulation_logs[iteration] = iteration_logs
         self.flattened_logs[iteration] = flatten_logs(iteration_logs)
     
+   
+    
+    def update_forces(self, state):
+        """Update all forces and moments based on the current state."""
+        delta = state[0:3]
+        roll, pitch, yaw = state[3:6]
+        velocities = state[6:12]
+        T = T_velocity(roll, pitch, yaw)
+        bf_velocities = T.T @ velocities
+
+        # Calculate the tow force
+        self.tow_force.calculate_tow_force(delta, roll, pitch, yaw)
+        # Update control forces based on velocities
+        for cf in self.control_forces.values():
+           cf['force'].calculate_force(bf_velocities)
+        # Update hull force based on velocities
+        self.hull_force.calculate_force(bf_velocities)
+        forces, moments = self.rigid_body.compute_forces_and_moments()
+        return velocities,forces,moments 
+   
     def run_simulation(self, initial_state, dt, num_iterations, method='euler'):
         """Custom solver for time-stepping simulation using Euler or RK4."""
         self.initialize()  # Ensure all forces are added before simulation starts
         state = initial_state.copy()
         method = method.lower()
 
-        # State variables: [x, y, z, roll, pitch, yaw, u, v, w, p, q, r]
+        # Inertial State variables: [x, y, z, roll, pitch, yaw, V_x, V_y, V_z, p, q, r]
         # Positions: x, y, z
         # Attitudes: roll, pitch, yaw
-        # Velocities: u, v, w (linear), p, q, r (angular)
+        # Velocities: V_x, V_y, V_z(linear), p, q, r (angular)
         
         for iteration in range(num_iterations):
-            velocities = state[6:12]
-            # Update control forces based on velocities
-            for cf in self.control_forces.values():
-                cf['force'].calculate_force(velocities)
-            # Update hull force based on velocities
-            self.hull_force.calculate_force(velocities)
-            forces, moments = self.rigid_body.compute_forces_and_moments()
+            forces, moments = self.update_forces(self, state)
             
-            state = self._step(state, velocities, forces, moments, dt, method)
+            # Update state using the selected integration method
+            state = self._step(state, forces, moments, dt, method)
             self.log_iteration(iteration, state)
         
         return state, self.simulation_logs, self.flattened_logs
+
 
     def _step(self, state, velocities, forces, moments, dt, method):
         """Select integration method (Euler or RK4)."""
@@ -73,20 +94,37 @@ class Simulation:
         else:
             raise ValueError("Invalid integration method. Choose 'euler' or 'rk4'.")
 
-    def _euler_step(self, state, velocities, forces, moments, dt):
+    def _euler_step(self, state, forces, moments, dt):
         """Euler integration step."""
-        accelerations = self.dynamics.compute_accelerations(velocities, dt, forces, moments)
-        state[6:12] += accelerations * dt  # Update velocities
+        roll, pitch, yaw = state[3:6]
+        velocities = state[6:12]
+        T = T_velocity(roll, pitch, yaw)
+        bf_velocities = T.T @ velocities
+
+        bf_accelerations = self.dynamics.compute_accelerations(bf_velocities, dt, forces, moments)
+
+        bf_velocities += bf_accelerations * dt # Update bf_velocities
+        
+        ## DO WE HAVE TO UPDATE THE TRANSFORMATION MATRIX IT DEPENDS ON OLD YAW, PITCH, ROLL
+        state[6:12] = T @ bf_velocities
+        
+        # Update positions and attitudes
         state[:6] += state[6:12] * dt  # Update positions and attitudes
         return state
 
     def _rk4_step(self, state, velocities, forces, moments, dt):
         """Runge-Kutta 4th order integration step."""
-        k1 = self.dynamics.compute_accelerations(velocities, dt, forces, moments)
-        k2 = self.dynamics.compute_accelerations(velocities + 0.5 * dt * k1, dt, forces, moments)
-        k3 = self.dynamics.compute_accelerations(velocities + 0.5 * dt * k2, dt, forces, moments)
-        k4 = self.dynamics.compute_accelerations(velocities + dt * k3, dt, forces, moments)
+        roll, pitch, yaw = state[3:6]
+        velocities = state[6:12]
+        T = T_velocity(roll, pitch, yaw)
+        bf_velocities = T.T @ velocities
+
+        k1 = self.dynamics.compute_accelerations(bf_velocities, dt, forces, moments)
+        k2 = self.dynamics.compute_accelerations(bf_velocities + 0.5 * dt * k1, dt, forces, moments)
+        k3 = self.dynamics.compute_accelerations(bf_velocities + 0.5 * dt * k2, dt, forces, moments)
+        k4 = self.dynamics.compute_accelerations(bf_velocities + dt * k3, dt, forces, moments)
         
-        state[6:12] += (k1 + 2*k2 + 2*k3 + k4) * (dt / 6.0)  # RK4 update for velocities
+        bf_velocities += (k1 + 2*k2 + 2*k3 + k4) * (dt / 6.0)  # RK4 update for velocities
+        state[6:12] = T @ bf_velocities
         state[:6] += state[6:12] * dt  # Update positions and attitudes
         return state
