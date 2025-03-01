@@ -1,9 +1,12 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from ControlForce import ControlForce
-from TowForce import TowForce
 import utilities.rotations as R
+
+from .TowForce import TowForce
+from .ControlForce import ControlForce
+from .HullForce import HullForce
+
 
 #Global variables
 g = 9.81
@@ -28,12 +31,11 @@ class RigidBody:
     def add_tow_force(self, force):
         self.tow_force = force
 
-    def add_control_force(self, force, global_location):
+    def add_control_force(self, force: ControlForce):
         """Adds a force instance to the force list"""
-        self.control_forces.set_global_location(global_location)
         self.control_forces.append(force)
     
-    def add_hull_force(self, force):
+    def add_hull_force(self, force: HullForce):
         self.hull_force = force
 
     ## Fix according to write up:
@@ -65,8 +67,8 @@ class RigidBody:
         ctrl_forces = []
         ctrl_moments = []
         for idx, control_forces in enumerate(self.control_forces):
-            ctrl_forces(idx) = control_forces.calculate_force(velocity_states)
-            ctrl_moments(idx) = np.cross(control_forces.relative_location, ctrl_forces)
+            ctrl_forces[idx] = control_forces.calculate_force(velocity_states)
+            ctrl_moments[idx] = np.cross(control_forces.relative_location, ctrl_forces)
 
         # sum of forces
         forces = mass_forces + buoyancy_forces + hull_forces + tow_forces + np.sum(ctrl_forces, axis=0)
@@ -104,8 +106,8 @@ class RigidBody:
         ctrl_forces = []
         ctrl_moments = []
         for idx, control_forces in enumerate(self.control_forces):
-            ctrl_forces(idx) = control_forces.body_forces
-            ctrl_moments(idx) = np.cross(control_forces.relative_location, ctrl_forces)
+            ctrl_forces[idx] = control_forces.body_forces
+            ctrl_moments[idx] = np.cross(control_forces.relative_location, ctrl_forces)
 
         # sum of forces
         forces = mass_forces + buoyancy_forces + hull_forces + tow_forces + np.sum(ctrl_forces, axis=0)

@@ -4,7 +4,7 @@ from utilities.rotations import R_x, R_y, R_z
 from utilities.logger import log
 
 class TowForce:
-    def __init__(self, tow_rope_length, drone_height, probe_depth, tow_force_magnitude, global_location):
+    def __init__(self, tow_force_magnitude, tow_rope_length, drone_height, probe_depth, global_location):
         self.tow_rope_length = tow_rope_length  # Length of the tow rope
         self.drone_height = drone_height  # Height of the drone above the water
         self.probe_depth = probe_depth  # Depth of the probe below the water

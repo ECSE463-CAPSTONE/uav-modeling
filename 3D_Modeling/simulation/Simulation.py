@@ -19,7 +19,9 @@ class Simulation:
     def initialize(self):
         """Initialize the simulation by adding forces to the rigid body."""
         for name, data in self.control_forces.items():
-            self.rigid_body.add_control_force(data['force'], data['position'])
+            control_force = data['force']
+            control_force.set_global_location(data['position'])
+            self.rigid_body.add_control_force(control_force)
         self.rigid_body.add_tow_force(self.tow_force)
         self.rigid_body.add_hull_force(self.hull_force)
 

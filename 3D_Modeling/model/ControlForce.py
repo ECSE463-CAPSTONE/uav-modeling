@@ -9,7 +9,7 @@ g = 9.81  # Gravitational acceleration (m/s^2)
 mu = 0.001308  # Dynamic viscosity (Pa.s)
 
 class ControlForce:
-    def __init__(self, delta_i_h, delta_i_v, AR, area, chord, stall_threshold, C_L_alpha, C_L_alpha_offset, mass, is_vertical=False, e=0.85):
+    def __init__(self, delta_i_h, delta_i_v, AR, area, chord, stall_threshold, C_L_alpha, C_L_alpha_offset, mass, inertia, is_vertical=False, e=0.85):
         self.AR = AR  # Aspect ratio
         self.Area = area  # Surface area
         self.chord = chord  # Chord length
@@ -17,7 +17,8 @@ class ControlForce:
         self.global_location = None  # Global location initially not set
         self.relative_location = None  # Relative location to COM
         self.mass = mass  # Mass of the control force
-        
+        self.inertia = inertia # Inertia of the control force (3x3)
+
         self.stall_threshold = stall_threshold
         self.C_L_alpha = C_L_alpha  # Slope of 2D lift curve
         self.C_L_alpha_offset = C_L_alpha_offset  # CL Alpha offset

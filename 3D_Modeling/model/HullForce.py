@@ -26,7 +26,8 @@ class HullForce:
         self.tracked_data = {}
 
     def load_map(self):
-        map = pd.read_csv(self.file_path)
+        # map = pd.read_csv(self.file_path)
+        map = pd.read_excel(self.file_path) 
         return map
   
     # UPDATE THIS FUNCTION TO TAKE THE VELOCITIES AND ROTATIONS

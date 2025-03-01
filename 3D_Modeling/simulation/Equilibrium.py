@@ -4,7 +4,7 @@ from simulation import Simulation
 from Dynamics import Dynamics
 from utilities.logger import T_velocity
 
-class EquilibriumSolver:
+class Equilibrium:
     def __init__(self, simulation: Simulation, num_iterations=100, tolerance=1e-5):
         self.simulation = simulation
         self.rigid_body = simulation.rigid_body
@@ -16,6 +16,8 @@ class EquilibriumSolver:
         self.equilibrium_logs = {}
 
         self.dynamics : Dynamics
+
+        self.state = np.zeros(12)  # Assuming 12 state variables [x, y, z, roll, pitch, yaw, u, v, w, p, q, r]
     
     def initialize_system(self):
         """Initialize the simulation system before solving for equilibrium."""
@@ -46,12 +48,9 @@ class EquilibriumSolver:
         self.tow_force.set_magnitude(tow_force_magnitude)
         
         # Initialize state
-        state = np.zeros(12)  # Assuming 12 state variables [x, y, z, roll, pitch, yaw, u, v, w, p, q, r]
-        state[4] = pitch_angle   
-
-        dt = 0.01  # Static condition
+        self.state[4] = pitch_angle   
             
-        forces, moments = self.update_forces_and_moments(state)
+        forces, moments = self.update_forces_and_moments(self.state)
         
         # Check for equilibrium convergence (forces & moments close to zero)
         if np.linalg.norm(forces) < self.tolerance and np.linalg.norm(moments) < self.tolerance:
@@ -60,10 +59,12 @@ class EquilibriumSolver:
         
         return np.linalg.norm(forces) + np.linalg.norm(moments)  # Minimize total force/moment magnitude
     
-    def solve(self, initial_tow_force, initial_pitch):
+    def solve(self, velocity , initial_guess):
         """Solve for equilibrium state using optimization."""
         self.initialize_system()  # Ensure the system is initialized before solving
-        
+
+        self.state[6] = velocity
+        initial_tow_force, initial_pitch = initial_guess
         result = minimize(
             self.objective_function, 
             x0=[initial_tow_force, initial_pitch], 
