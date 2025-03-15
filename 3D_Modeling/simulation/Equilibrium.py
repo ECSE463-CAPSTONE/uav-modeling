@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.optimize import minimize
-from simulation import Simulation
-from Dynamics import Dynamics
-from utilities.logger import T_velocity
+from simulation.Simulation import Simulation
+from simulation.Dynamics import Dynamics
+from utilities.rotations import T_velocity
 
 class Equilibrium:
     def __init__(self, simulation: Simulation, num_iterations=100, tolerance=1e-5):
@@ -35,7 +35,9 @@ class Equilibrium:
         for cf in self.control_forces.values():
             cf['force'].calculate_force(bf_velocities)
         self.hull_force.calculate_force(bf_velocities)
-        return self.rigid_body.compute_forces_and_moments()
+        
+        attidude_states = np.array([roll, pitch, yaw])
+        return self.rigid_body.sum_forces_moments(attidude_states)
     
     def objective_function(self, variables):
         """
@@ -45,7 +47,7 @@ class Equilibrium:
         tow_force_magnitude, pitch_angle = variables
         
         # Apply new values
-        self.tow_force.set_magnitude(tow_force_magnitude)
+        self.tow_force.set_magnitude(tow_force_magnitude, pitch_angle)
         
         # Initialize state
         self.state[4] = pitch_angle   

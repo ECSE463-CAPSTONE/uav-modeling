@@ -47,8 +47,8 @@ class HullForce:
         #this line returns a 6x1 column vector of [Fx, Fy, Fz, Mx, My, Mz] about the global center of mass
         translated_rotated_force_moments = self.translate_force(rotated_force_moments)
 
-        self.body_forces = translated_rotated_force_moments[:3,0]
-        self.body_moments = translated_rotated_force_moments[3:,0]
+        self.body_forces = translated_rotated_force_moments[:3]
+        self.body_moments = translated_rotated_force_moments[3:]
         return self.body_forces, self.body_moments
         
     
@@ -61,17 +61,17 @@ class HullForce:
     
     def translate_force(self, rotated_force_moments):
         #Translate forces from nose to COM
-        forces = rotated_force_moments[:3, 0]
-        moments = rotated_force_moments[3:, 0]
+        forces = rotated_force_moments[:3]
+        moments = rotated_force_moments[3:]
 
         #add hull com location to relative global com location to get nose to global com distance
         com_global_location = self.relative_location + self.global_location
 
         #com global location comes from the rigid body object
         cross_product = np.cross(forces, com_global_location.flatten())  # Compute cross product
-        translated_moments = moments + cross_product.reshape(3, 1)  # Add to v2
+        translated_moments = moments + cross_product  # Add to v2
 
-        translated_rotated_force_moments = np.vstack((forces.reshape(3, 1), translated_moments))  # Stack vertically
+        translated_rotated_force_moments = np.hstack((forces, translated_moments))  # Stack horizontally
 
         return translated_rotated_force_moments
     

@@ -83,7 +83,7 @@ class ControlForce:
         if self.relative_location is None:
             raise ValueError("Relative location is not set.")
         
-        V, alpha_i, beta_i = self.calculate_alpha_beta(velocity_states)
+        V, alpha_i, beta_i = self.calculate_velocity_alpha_beta(velocity_states)
         
         # Reynolds number
         Re = self.calculate_reynolds_number(V)

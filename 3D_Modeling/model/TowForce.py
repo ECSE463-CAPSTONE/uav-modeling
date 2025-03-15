@@ -59,7 +59,7 @@ class TowForce:
         return self.tow_force
     
     
-    def calculate_tow_force(self, delta, roll, pitch, yaw):
+    def calculate_tow_force_delta(self, delta, roll, pitch, yaw):
         """Calculate the tow force for a given perturbation and attitude."""
         self.calculate_global_vector(delta)
         self.calculate_body_frame_vector(roll, pitch, yaw)
@@ -67,7 +67,11 @@ class TowForce:
 
         return tow_force
         
-    
+    def set_magnitude(self, tow_force_magnitude, pitch_angle):
+        "Get tow force vector, used for equilibrium calc"
+        self.tow_force_magnitude = tow_force_magnitude
+        self.calculate_tow_force_delta(np.array([0,0,0]), 0, pitch_angle, 0)
+
     def calculate_azimuth_elevation(self):
         """Calculate the azimuth and elevation angles in the body frame."""
         if self.tow_body_vector is None:

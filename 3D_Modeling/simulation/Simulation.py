@@ -2,8 +2,7 @@ import numpy as np
 from utilities.logger import log, consolidate_logs, flatten_logs
 from utilities.rotations import T_velocity
 
-from Dynamics import Dynamics
-
+from simulation.Dynamics import Dynamics
 
 
 class Simulation:
@@ -24,12 +23,12 @@ class Simulation:
             self.rigid_body.add_control_force(control_force)
         self.rigid_body.add_tow_force(self.tow_force)
         self.rigid_body.add_hull_force(self.hull_force)
+        COM, mass = self.rigid_body.calculate_COM()
 
-        mass = self.rigid_body.calculate_inertia_matrix()
-        inertia = self.rigid_body.calculate_inertia_matrix()
+        inertia = self.rigid_body.calculate_inertia()
         self.dynamics = Dynamics(mass, inertia)
 
-        self.rigid_body.calculate_COM()
+        
 
     def log_iteration(self, iteration, state):
         """Logs simulation data for each iteration."""
@@ -57,14 +56,14 @@ class Simulation:
         bf_velocities = T.T @ velocities
 
         # Calculate the tow force
-        self.tow_force.calculate_tow_force(delta, roll, pitch, yaw)
+        self.tow_force.calculate_tow_force_delta(delta, roll, pitch, yaw)
         # Update control forces based on velocities
         for cf in self.control_forces.values():
            cf['force'].calculate_force(bf_velocities)
         # Update hull force based on velocities
         self.hull_force.calculate_force(bf_velocities)
-        forces, moments = self.rigid_body.compute_forces_and_moments()
-        return velocities,forces,moments 
+        forces, moments = self.rigid_body.sum_forces_moments(np.array([roll, pitch, yaw]))
+        return velocities, forces, moments 
    
     def run_simulation(self, initial_state, dt, num_iterations, method='euler'):
         """Custom solver for time-stepping simulation using Euler or RK4."""
@@ -78,11 +77,11 @@ class Simulation:
         # Velocities: V_x, V_y, V_z(linear), p, q, r (angular)
         
         for iteration in range(num_iterations):
-            forces, moments = self.update_forces(self, state)
+            velocities, forces, moments = self.update_forces(state)
             
             # Update state using the selected integration method
-            state = self._step(state, forces, moments, dt, method)
-            self.log_iteration(iteration, state)
+            state = self._step(state, velocities, forces, moments, dt, method)
+            #self.log_iteration(iteration, state)
         
         return state, self.simulation_logs, self.flattened_logs
 
@@ -90,7 +89,7 @@ class Simulation:
     def _step(self, state, velocities, forces, moments, dt, method):
         """Select integration method (Euler or RK4)."""
         if method == 'euler':
-            return self._euler_step(state, velocities, forces, moments, dt)
+            return self._euler_step(state, forces, moments, dt)
         elif method == 'rk4':
             return self._rk4_step(state, velocities, forces, moments, dt)
         else:

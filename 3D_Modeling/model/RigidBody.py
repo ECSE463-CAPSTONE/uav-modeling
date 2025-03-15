@@ -27,6 +27,8 @@ class RigidBody:
         self.tow_force : TowForce
         self.moments = []  # List of moments about the y-axis (pitch)
 
+        self.tracked_data = {}  # Store logs for each iteration
+
     
     def add_tow_force(self, force):
         self.tow_force = force
@@ -87,10 +89,10 @@ class RigidBody:
         roll, pitch, yaw = attidude_states
        
         # mass force (inertial) #yaw pitch roll are states that we calculate
-        mass_forces = self.mass * 9.81 * np.array([0], [0], [1]) @ ( R.R_z(yaw) @ R.R_y(pitch) @ R.R_x(roll) )
+        mass_forces = self.mass * 9.81 * np.array([0, 0, 1]) @ ( R.R_z(yaw) @ R.R_y(pitch) @ R.R_x(roll) )
 
         #buoyancy force and moments
-        buoyancy_forces = self.buoyancy * np.array([0], [0], [-1]) @ ( R.R_z(yaw) @ R.R_y(pitch) @ R.R_x(roll) )
+        buoyancy_forces = self.buoyancy * np.array([0, 0, -1]) @ ( R.R_z(yaw) @ R.R_y(pitch) @ R.R_x(roll) )
         buoyancy_moments = np.cross(self.center_of_buoyancy, buoyancy_forces)
 
         #hull force and moments calculated in simulation
@@ -103,38 +105,38 @@ class RigidBody:
         tow_moments = np.cross(self.tow_force.relative_location, tow_forces) #r x F
 
         #control forces and moments, indexed for easier debugging!
-        ctrl_forces = []
-        ctrl_moments = []
+        ctrl_forces = np.array([0, 0, 0])
+        ctrl_moments = np.array([0, 0, 0])
         for idx, control_forces in enumerate(self.control_forces):
-            ctrl_forces[idx] = control_forces.body_forces
-            ctrl_moments[idx] = np.cross(control_forces.relative_location, ctrl_forces)
+            ctrl_forces = ctrl_forces + control_forces.body_forces
+            ctrl_moments = ctrl_moments + np.cross(control_forces.relative_location, control_forces.body_forces)
 
         # sum of forces
-        forces = mass_forces + buoyancy_forces + hull_forces + tow_forces + np.sum(ctrl_forces, axis=0)
+        forces = mass_forces + buoyancy_forces + hull_forces + tow_forces + ctrl_forces
 
         # sum of moments
-        moments = buoyancy_moments + hull_moments + tow_moments + np.sum(ctrl_moments, axis=0)
+        moments = buoyancy_moments + hull_moments + tow_moments + ctrl_moments
 
         return forces, moments
 
 
-    def calculateCOM(self):
+    def calculate_COM(self):
         """Calculates the center of mass of the body."""
         # Assume control forces will have an associated mass and COM wrt wing tip      
 
         #add up all the masses together
-        total_mass = self.hull_force.mass + sum(control_force['mass'] for control_force in self.control_forces)
-
+        total_mass = self.hull_force.mass + sum(control_force.mass for control_force in self.control_forces)
+        self.mass = total_mass
 
         positions = np.array(self.hull_force.global_location)  # Shape (N, 3) for 3D or (N, 2) for 2D
         masses = np.array(self.hull_force.mass)  # Shape (N,)
         
         for control_forces in self.control_forces:
-            positions.append(control_forces.global_location)
-            masses.append(control_forces.mass)
+            positions = np.vstack((positions,control_forces.global_location))
+            masses = np.hstack((masses,control_forces.mass))
 
         COM = np.sum(positions.T * masses, axis=1) / total_mass
-
+        self.COM = COM
         # After COM is calculated, the relative location is auto updated
         self.hull_force.calculate_relative_location(COM)
         self.tow_force.calculate_relative_location(COM)
@@ -151,8 +153,8 @@ class RigidBody:
         masses = np.array(self.hull_force.mass)  # Shape (N,)
         
         for control_forces in self.control_forces:
-            positions.append(control_forces.global_location)
-            masses.append(control_forces.mass)
+            positions = np.vstack((positions,control_forces.global_location))
+            masses = np.hstack((masses,control_forces.mass))
 
         x, y, z = positions.T
         Ixx = np.sum(masses * (y**2 + z**2))
